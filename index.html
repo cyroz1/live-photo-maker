@@ -7,6 +7,8 @@
 <link rel="icon" href="data:," />
 <title>Live Photo Maker</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/umd/index.js"></script>
 <style>
   :root{
     color-scheme: light;
@@ -333,12 +335,12 @@
   <section class="card howto" aria-label="How to use the files on iPhone">
     <h2><span class="stepnum">4</span> On your iPhone: pair them &amp; make the sticker</h2>
     <ol>
-      <li><b>Get both files onto the phone, together.</b>
-        <span class="d">Easiest: open this page in Safari on the iPhone and download both files right there. On a Mac or PC, AirDrop both files to the iPhone in one go. The two files must keep the same name — they&apos;re a matched pair.</span></li>
-      <li><b>Save both to Photos.</b>
-        <span class="d">In the Files app, select both files, tap Share, then &ldquo;Save to Photos&rdquo; (save both, not just one). iOS spots the shared pairing ID and merges them into a single Live Photo — you&apos;ll only see one item in Photos.</span></li>
+      <li><b>Reliable route: AirDrop both files to the iPhone at the same time.</b>
+        <span class="d">Select the .JPG and the .MOV together (they share the same name — keep it that way) and AirDrop them in one go. They should arrive in Photos as a single Live Photo. On a Mac, you can also drag both files into the Photos app together and they will import as one Live Photo, then sync to your iPhone.</span></li>
+      <li><b>About saving from the Files app.</b>
+        <span class="d">Saving both files from the Files app with Share → Save Image sometimes lands as two separate items — a still and a video side by side — instead of one Live Photo. If that happens, delete both and use the AirDrop or Mac Photos route above; that pairing route is the reliable one.</span></li>
       <li><b>Check it plays.</b>
-        <span class="d">Open it in Photos and long-press — it should animate, with the LIVE badge up top. If the two files landed separately, delete both and re-save them together.</span></li>
+        <span class="d">Open it in Photos and long-press — it should animate, with the LIVE badge up top.</span></li>
       <li><b>Turn it into an iMessage sticker.</b>
         <span class="d">In Photos, long-press the subject in the Live Photo and tap &ldquo;Add Sticker&rdquo; — or in Messages, open the + menu → Stickers → + and pick the Live Photo. Live Photo stickers stay animated in the chat.</span></li>
     </ol>
@@ -351,7 +353,7 @@
     </div>
     <div class="note">
       <h3>Good to know</h3>
-      <p>Re-encoded clips are <b>silent</b> (stickers don&apos;t need sound, and it keeps the MOV tiny). For the sharpest result, use the &ldquo;keep original&rdquo; option with MP4/MOV clips. If your browser can only record WebM, you&apos;ll get a warning — switch to Safari or Chrome for a pairable .MOV.</p>
+      <p>The video is converted with a real QuickTime (MOV) encoder in your browser, so the .MOV is a genuine QuickTime file — H.264, with sound kept as AAC when the source has it. The first conversion downloads the encoder once (about 30 MB) and can take a little while on longer clips; keep the tab open while it works.</p>
     </div>
   </div>
 
@@ -627,6 +629,7 @@
     var head = [0x41,0x70,0x70,0x6C,0x65,0x20,0x69,0x4F,0x53,0x00, 0x00,0x01];
     var uuidBytes = [];
     for (var i = 0; i < uuid.length; i++) uuidBytes.push(uuid.charCodeAt(i));
+    uuidBytes.push(0); // trailing NUL: ASCII count is 37, not 36
     var tiff = [];
     // "MM", 42, IFD offset 8
     tiff.push(0x4D,0x4D, 0x00,0x2A, 0x00,0x00,0x00,0x08);
@@ -1045,129 +1048,117 @@
     showAlert("ok", "<b>Sample loaded.</b> Hit &ldquo;Make my Live Photo&rdquo; and you'll get a real pair to test the iPhone steps with.");
   });
 
-  /* ================= make it ================= */
-  makeBtn.addEventListener("click", function(){
+  /* ================= ffmpeg.wasm engine (genuine QuickTime MOV) ================= */
+  var ffmpegInst = null;
+  var ffmpegReady = false;
+  function loadFFmpegEngine(onMsg){
+    if (ffmpegReady && ffmpegInst) return Promise.resolve(ffmpegInst);
+    if (!window.FFmpegWASM || !window.FFmpegUtil) return Promise.reject(new Error("The video encoder failed to load. Check your connection and reload the page."));
+    var FFmpegCtor = window.FFmpegWASM.FFmpeg;
+    var toBlobURL = window.FFmpegUtil.toBlobURL;
+    var ff = new FFmpegCtor();
+    ffmpegInst = ff;
+    ff.on("progress", function(e){
+      // progress events fire per exec; the make flow maps them into its own bar
+      if (typeof ff._onprog === "function") { try { ff._onprog(e); } catch(_){} }
+    });
+    ff.on("log", function(){});
+    var base = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm";
+    if (onMsg) onMsg("Downloading the video encoder (one time, ~30 MB)…");
+    return Promise.all([
+      toBlobURL(base + "/ffmpeg-core.js", "text/javascript"),
+      toBlobURL(base + "/ffmpeg-core.wasm", "application/wasm")
+    ]).then(function(urls){
+      return ff.load({ coreURL: urls[0], wasmURL: urls[1] });
+    }).then(function(){
+      ffmpegReady = true;
+      return ff;
+    });
+  }
+  function extForFile(file, kind){
+    if (!file) return "input.mp4";
+    var n = (file.name || "").toLowerCase();
+    var m = n.match(/\.(mp4|mov|m4v|webm|gif|mkv)$/);
+    if (m) return "input." + m[1];
+    if (file.type === "image/gif") return "input.gif";
+    if (file.type.indexOf("webm") >= 0) return "input.webm";
+    if (file.type === "video/quicktime") return "input.mov";
+    return "input.mp4";
+  }
+  function vfFor(shape){
+    if (shape === "square") return "crop='min(iw\\,ih)':'min(iw\\,ih)',scale='min(1080\\,iw)':'min(1080\\,ih)',pad='ceil(iw/2)*2':'ceil(ih/2)*2'";
+    return "scale='min(1080\\,iw)':'min(1080\\,ih)':force_original_aspect_ratio=decrease,pad='ceil(iw/2)*2':'ceil(ih/2)*2'";
+  }
+  function coverVfFor(shape){
+    if (shape === "square") return "crop='min(iw\\,ih)':'min(iw\\,ih)',scale='min(1080\\,iw)':'min(1080\\,ih)'";
+    return "scale='min(1080\\,iw)':'min(1080\\,ih)':force_original_aspect_ratio=decrease";
+  }
+
+  /* ================= make it (ffmpeg) ================= */
+  makeBtn.addEventListener("click", async function(){
     if (state.busy) return;
     if (!state.kind){ showAlert("err", "<b>Load a clip first</b> — or generate the test sticker."); return; }
-    state.busy = true;
-    makeBtn.disabled = true;
-    resetOutput();
-    setProgress(2, "Preparing…");
-
-    var uuid = makeUuid();
-    state.uuid = uuid;
-    var base = "live-sticker-" + uuid.slice(0, 4).toLowerCase();
-    state.baseName = base;
-
-    function fail(err){
-      state.busy = false;
-      makeBtn.disabled = false;
-      hideProgress();
-      showAlert("err", "<b>That didn't work:</b> " + escapeHtml(err.message || String(err)));
-    }
-
-    function finish(jpgBlob, movBlob, movExt, warnHtml, stillSecondsNote){
-      // Stamp the JPEG (cover may need producing for sample/video paths)
-      state.busy = false;
-      makeBtn.disabled = false;
-      hideProgress();
-      state.outJpgBlob = jpgBlob;
-      state.outMovBlob = movBlob;
-      state.outJpgUrl = URL.createObjectURL(jpgBlob);
-      state.outMovUrl = URL.createObjectURL(movBlob);
-      $("jpgName").textContent = base + ".JPG";
-      $("movName").textContent = base + "." + movExt;
-      var j = $("jpgDl"); j.href = state.outJpgUrl; j.setAttribute("download", base + ".JPG");
-      var m = $("movDl"); m.href = state.outMovUrl; m.setAttribute("download", base + "." + movExt);
-      $("pairId").innerHTML = "Pairing ID in both files: <b>" + uuid + "</b>" + (stillSecondsNote ? "<br>" + stillSecondsNote : "");
+    state.busy = true; makeBtn.disabled = true; resetOutput(); setProgress(2, "Preparing…");
+    var uuid = makeUuid(); state.uuid = uuid;
+    var base = "live-sticker-" + uuid.slice(0, 4).toLowerCase(); state.baseName = base;
+    function fail(err){ state.busy=false; makeBtn.disabled=false; hideProgress(); showAlert("err", "<b>That didn't work:</b> " + escapeHtml((err && err.message) || String(err))); }
+    function finish(jpgBlob, movBlob, note){
+      state.busy=false; makeBtn.disabled=false; hideProgress();
+      state.outJpgBlob=jpgBlob; state.outMovBlob=movBlob;
+      state.outJpgUrl=URL.createObjectURL(jpgBlob); state.outMovUrl=URL.createObjectURL(movBlob);
+      $("jpgName").textContent=base+".JPG"; $("movName").textContent=base+".MOV";
+      var j=$("jpgDl"); j.href=state.outJpgUrl; j.setAttribute("download", base+".JPG");
+      var m=$("movDl"); m.href=state.outMovUrl; m.setAttribute("download", base+".MOV");
+      $("pairId").innerHTML="Pairing ID in both files: <b>"+uuid+"</b>"+(note?"<br>"+note:"");
       output.classList.add("on");
-      if (warnHtml) showAlert("warn", warnHtml);
-      else showAlert("ok", "<b>Done — that's a real Live Photo pair.</b> Download both files (keep the names matched), get them onto your iPhone together, and follow step 4 below.");
-      output.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      showAlert("ok", "<b>Done — that's a real Live Photo pair.</b> Download both files (keep the names matched), AirDrop them to your iPhone together, and follow step 4 below.");
+      output.scrollIntoView({behavior:"smooth", block:"nearest"});
     }
-
-    function stampCoverAndFinish(rawMovBlobOrBuffer, stillSeconds, isRawBuffer){
-      var doStamp = function(jpegBuf){
-        try {
-          var jpg = stampJpeg(jpegBuf, uuid);
-          if (isRawBuffer){
-            var mv = stampMov(rawMovBlobOrBuffer, uuid, stillSeconds);
-            finish(jpg, mv, "MOV", null, "Video: original file, stamped in place · " + fmtBytes(mv.size));
-          } else {
-            rawMovBlobOrBuffer.arrayBuffer().then(function(ab){
-              var isMp4 = rawMovBlobOrBuffer.type.indexOf("mp4") >= 0;
-              if (!isMp4){
-                finish(jpg, rawMovBlobOrBuffer, "WEBM",
-                  "<b>Heads up:</b> this browser could only record WebM, and iOS Photos can't pair a WebM as a Live Photo. The JPG is fine — re-make the pair in <b>Safari or Chrome</b> to get a pairable .MOV.",
-                  "Cover frame stamped · video is WebM (not pairable)");
-                return;
-              }
-              var mv2 = stampMov(ab, uuid, stillSeconds);
-              finish(jpg, mv2, "MOV", null, "Video: re-encoded .MOV · " + fmtBytes(mv2.size) + " · silent");
-            }).catch(function(e){ fail(e); });
-          }
-        } catch(e){ fail(e); }
-      };
-      if (state.coverBlob){
-        state.coverBlob.arrayBuffer().then(doStamp).catch(fail);
-      } else if (state.coverCanvas){
-        state.coverCanvas.toBlob(function(b){
-          if (!b){ fail(new Error("Couldn't produce the cover photo.")); return; }
-          b.arrayBuffer().then(doStamp).catch(fail);
-        }, "image/jpeg", 0.92);
-      } else {
-        fail(new Error("No cover frame yet — scrub to a frame first."));
-      }
-    }
-
     try {
-      var usePassthrough = state.kind === "video" && state.isPassthroughCapable && keepOriginal.checked;
-      if (usePassthrough){
-        setProgress(45, "Stamping your original file with the pairing ID…");
-        if (state.kind === "video") captureCoverFromVideo();
-        state.file.arrayBuffer().then(function(ab){
-          stampCoverAndFinish(ab, state.keyTime, true);
-        }).catch(fail);
-        return;
+      var ff = await loadFFmpegEngine(function(m){ setProgress(5, m); });
+      var fetchFile = window.FFmpegUtil.fetchFile;
+      var inputBlob, inputName, startSec = 0;
+      if (state.kind === "sample") {
+        setProgress(12, "Generating the test clip…");
+        var sampleBlob = await recordClip(function(ctx,w,h,t){ drawSampleFrame(ctx,w,h,t); }, state.length, function(f){ setProgress(12+f*10, "Generating the test clip…"); });
+        inputBlob = sampleBlob; inputName = (sampleBlob.type.indexOf("webm")>=0) ? "input.webm" : "input.mp4"; startSec = 0;
+      } else {
+        inputBlob = state.file; inputName = extForFile(state.file, state.kind); startSec = (state.kind==="video") ? (state.keyTime||0) : 0;
       }
-
-      // Re-encode path
-      setProgress(8, "Recording your clip… (plays in real time)");
-      if (state.kind === "video"){
-        captureCoverFromVideo();
-        vid.loop = true;
-        vid.currentTime = state.keyTime;
-        var started = false;
-        var begin = function(){
-          if (started) return; started = true;
-          var p = vid.play(); if (p && p.catch) p.catch(function(){});
-          recordClip(drawVideoFrame, state.length, function(f){
-            setProgress(8 + f * 78, "Recording your clip… " + Math.round(f * 100) + "%");
-          }).then(function(blob){
-            setProgress(92, "Stamping the pair…");
-            stampCoverAndFinish(blob, 0, false);
-          }).catch(fail);
-        };
-        if (vid.readyState >= 3) begin();
-        else vid.addEventListener("canplay", begin, { once: true });
-        setTimeout(function(){ if (!started) begin(); }, 1200);
-      } else if (state.kind === "gif"){
-        snapCoverFromGif();
-        recordClip(drawGifFrame, state.length, function(f){
-          setProgress(8 + f * 78, "Recording your GIF… " + Math.round(f * 100) + "%");
-        }).then(function(blob){
-          setProgress(92, "Stamping the pair…");
-          stampCoverAndFinish(blob, 0, false);
-        }).catch(fail);
-      } else if (state.kind === "sample"){
-        sampleSnapCover();
-        recordClip(function(ctx, w, h, t){ drawSampleFrame(ctx, w, h, t); }, state.length, function(f){
-          setProgress(8 + f * 78, "Recording the test clip… " + Math.round(f * 100) + "%");
-        }).then(function(blob){
-          setProgress(92, "Stamping the pair…");
-          stampCoverAndFinish(blob, 0, false);
-        }).catch(fail);
+      setProgress(24, "Loading your clip into the encoder…");
+      await ff.writeFile(inputName, await fetchFile(inputBlob));
+      ff._onprog = function(e){ setProgress(30 + (e.progress||0)*10, "Extracting the cover photo…"); };
+      var coverArgs = ["-ss", String(startSec), "-i", inputName, "-frames:v", "1", "-q:v", "2", "-vf", coverVfFor(state.shape), "-y", "cover.jpg"];
+      await ff.exec(coverArgs);
+      var coverData = await ff.readFile("cover.jpg");
+      if (!coverData || !coverData.length) throw new Error("Couldn't extract the cover photo from that clip.");
+      var jpgBlob = stampJpeg(coverData.buffer.slice(coverData.byteOffset, coverData.byteOffset+coverData.byteLength), uuid);
+      var usePassthrough = state.kind==="video" && state.isPassthroughCapable && keepOriginal.checked;
+      var stillOffset = "0";
+      ff._onprog = function(e){ setProgress(45 + (e.progress||0)*50, "Converting to a real QuickTime Live Photo… " + Math.round((e.progress||0)*100) + "%"); };
+      setProgress(45, "Converting to a real QuickTime Live Photo…");
+      var movCode;
+      if (usePassthrough) {
+        movCode = await ff.exec(["-i", inputName, "-map","0:v:0","-map","0:a?","-c","copy","-movflags","+use_metadata_tags","-metadata","com.apple.quicktime.content.identifier="+uuid,"-metadata","com.apple.quicktime.still-image-time="+stillOffset,"-f","mov","-y","out.mov"]);
+      } else {
+        var common = ["-ss", String(startSec), "-i", inputName, "-t", String(state.length), "-map","0:v:0"];
+        var encode = ["-c:v","libx264","-pix_fmt","yuv420p","-profile:v","high","-r","30","-vf", vfFor(state.shape), "-movflags","+use_metadata_tags","-metadata","com.apple.quicktime.content.identifier="+uuid,"-metadata","com.apple.quicktime.still-image-time="+stillOffset,"-f","mov","-y","out.mov"];
+        var withAudio;
+        if (state.kind==="gif" || state.kind==="sample") withAudio = common.concat(["-an"]).concat(encode);
+        else withAudio = common.concat(["-map","0:a?","-c:a","aac","-b:a","128k"]).concat(encode);
+        movCode = await ff.exec(withAudio);
+        if (movCode !== 0 && state.kind !== "gif" && state.kind !== "sample") {
+          try { await ff.deleteFile("out.mov"); } catch(_){}
+          movCode = await ff.exec(common.concat(["-an"]).concat(encode));
+        }
       }
+      if (movCode !== 0) throw new Error("The QuickTime conversion failed for this clip. Try a shorter clip or a different file (MP4, MOV or GIF).");
+      var movData = await ff.readFile("out.mov");
+      if (!movData || !movData.length) throw new Error("The converter produced an empty video file.");
+      var movBlob = new Blob([movData.buffer.slice(movData.byteOffset, movData.byteOffset+movData.byteLength)], {type:"video/quicktime"});
+      try { await ff.deleteFile(inputName); await ff.deleteFile("cover.jpg"); await ff.deleteFile("out.mov"); } catch(_){}
+      ff._onprog = null;
+      finish(jpgBlob, movBlob, "Video: genuine QuickTime .MOV · H.264 · " + fmtBytes(movBlob.size));
     } catch(e){ fail(e); }
   });
 
