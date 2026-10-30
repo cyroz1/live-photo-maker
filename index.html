@@ -6,9 +6,8 @@
 <meta name="color-scheme" content="light" />
 <link rel="icon" href="data:," />
 <title>Live Photo Maker</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/umd/index.js"></script>
+<script src="vendor/jszip.min.js"></script>
+<script src="vendor/ffmpeg.js"></script>
 <style>
   :root{
     color-scheme: light;
@@ -1048,29 +1047,47 @@
     showAlert("ok", "<b>Sample loaded.</b> Hit &ldquo;Make my Live Photo&rdquo; and you'll get a real pair to test the iPhone steps with.");
   });
 
-  /* ================= ffmpeg.wasm engine (genuine QuickTime MOV) ================= */
+  /* ================= ffmpeg.wasm engine (genuine QuickTime MOV) =================
+     Everything is vendored same-origin under vendor/ (no CDN scripts):
+     the @ffmpeg/util UMD build throws "exports is not defined" in browsers,
+     so its two helpers are implemented inline here. */
   var ffmpegInst = null;
   var ffmpegReady = false;
+  function toBlobURLLocal(url, mime){
+    return fetch(url).then(function(r){
+      if (!r.ok) throw new Error("encoder download failed (" + r.status + ")");
+      return r.arrayBuffer();
+    }).then(function(ab){
+      return URL.createObjectURL(new Blob([ab], { type: mime }));
+    });
+  }
+  function fetchFileLocal(blob){
+    return blob.arrayBuffer().then(function(ab){ return new Uint8Array(ab); });
+  }
   function loadFFmpegEngine(onMsg){
     if (ffmpegReady && ffmpegInst) return Promise.resolve(ffmpegInst);
-    if (!window.FFmpegWASM || !window.FFmpegUtil) return Promise.reject(new Error("The video encoder failed to load. Check your connection and reload the page."));
+    if (!window.FFmpegWASM) return Promise.reject(new Error("The video encoder failed to load. Check your connection and reload the page."));
     var FFmpegCtor = window.FFmpegWASM.FFmpeg;
-    var toBlobURL = window.FFmpegUtil.toBlobURL;
-    var ff = new FFmpegCtor();
-    ffmpegInst = ff;
-    ff.on("progress", function(e){
-      // progress events fire per exec; the make flow maps them into its own bar
-      if (typeof ff._onprog === "function") { try { ff._onprog(e); } catch(_){} }
-    });
-    ff.on("log", function(){});
-    var base = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm";
     if (onMsg) onMsg("Downloading the video encoder (one time, ~30 MB)…");
-    return Promise.all([
-      toBlobURL(base + "/ffmpeg-core.js", "text/javascript"),
-      toBlobURL(base + "/ffmpeg-core.wasm", "application/wasm")
-    ]).then(function(urls){
-      return ff.load({ coreURL: urls[0], wasmURL: urls[1] });
-    }).then(function(){
+    function attempt(){
+      var ff = new FFmpegCtor();
+      ffmpegInst = ff;
+      ff.on("progress", function(e){
+        // progress events fire per exec; the make flow maps them into its own bar
+        if (typeof ff._onprog === "function") { try { ff._onprog(e); } catch(_){} }
+      });
+      ff.on("log", function(){});
+      return Promise.all([
+        toBlobURLLocal("vendor/ffmpeg-core.js", "text/javascript"),
+        toBlobURLLocal("vendor/ffmpeg-core.wasm", "application/wasm")
+      ]).then(function(urls){
+        return ff.load({ coreURL: urls[0], wasmURL: urls[1] });
+      }).then(function(){ return ff; });
+    }
+    return attempt().catch(function(){
+      // one retry with a fresh instance; a half-loaded instance cannot reload
+      return attempt();
+    }).then(function(ff){
       ffmpegReady = true;
       return ff;
     });
@@ -1116,7 +1133,7 @@
     }
     try {
       var ff = await loadFFmpegEngine(function(m){ setProgress(5, m); });
-      var fetchFile = window.FFmpegUtil.fetchFile;
+      var fetchFile = fetchFileLocal;
       var inputBlob, inputName, startSec = 0;
       if (state.kind === "sample") {
         setProgress(12, "Generating the test clip…");
