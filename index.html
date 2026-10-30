@@ -1,0 +1,1232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>Live Photo Maker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f4f0;
+    --surface:#ffffff;
+    --surface-2:#eceff3;
+    --ink:#14161a;
+    --ink-2:#4b5563;
+    --line:#14161a;
+    --blue:#0a84ff;
+    --blue-dark:#0060df;
+    --green:#1db954;
+    --green-soft:#dcf5e5;
+    --amber:#ffb340;
+    --amber-soft:#fff0d2;
+    --red:#e5484d;
+    --red-soft:#fde3e3;
+    --shadow:6px 6px 0 var(--ink);
+    --shadow-sm:3px 3px 0 var(--ink);
+    --radius:18px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#101216;
+      --surface:#1a1d23;
+      --surface-2:#23262e;
+      --ink:#f2f3f5;
+      --ink-2:#a7aebc;
+      --line:#f2f3f5;
+      --green-soft:#123524;
+      --amber-soft:#3d2f0e;
+      --red-soft:#3d1618;
+      --shadow:6px 6px 0 rgba(0,0,0,.55);
+      --shadow-sm:3px 3px 0 rgba(0,0,0,.55);
+    }
+  }
+  *{ box-sizing:border-box; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0;
+    background:var(--bg);
+    background-image:radial-gradient(var(--ink-2) .8px, transparent .8px);
+    background-size:26px 26px;
+    background-position:0 0;
+    color:var(--ink);
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height:1.45;
+  }
+  .wrap{ max-width:1060px; margin:0 auto; padding:28px 18px 64px; }
+
+  /* ---------- header ---------- */
+  header{ margin:6px 0 26px; }
+  .badge{
+    display:inline-block;
+    background:var(--amber);
+    color:#14161a;
+    border:2px solid var(--line);
+    border-radius:999px;
+    padding:4px 14px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:12.5px; font-weight:600;
+    letter-spacing:.04em;
+    transform:rotate(-1.5deg);
+    box-shadow:var(--shadow-sm);
+  }
+  h1{
+    font-family:"Bricolage Grotesque", -apple-system, sans-serif;
+    font-weight:800;
+    font-size:clamp(38px, 7.5vw, 64px);
+    line-height:.98;
+    letter-spacing:-.01em;
+    margin:16px 0 12px;
+    max-width:12ch;
+  }
+  h1 .hl{ background:var(--blue); color:#fff; padding:0 .14em; border-radius:.18em; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
+  .lede{ font-size:clamp(16px, 2.6vw, 19px); color:var(--ink-2); max-width:56ch; margin:0; }
+  .lede strong{ color:var(--ink); }
+
+  /* ---------- layout ---------- */
+  .grid{ display:grid; grid-template-columns:1fr; gap:22px; }
+  @media (min-width:880px){ .grid{ grid-template-columns:1.15fr .85fr; align-items:start; } }
+  .card{
+    background:var(--surface);
+    border:2px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:20px;
+  }
+  .card h2{
+    font-family:"Bricolage Grotesque", sans-serif;
+    font-size:21px; font-weight:800; margin:0 0 4px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .stepnum{
+    flex:0 0 auto; width:30px; height:30px; border-radius:50%;
+    background:var(--ink); color:var(--bg);
+    display:inline-flex; align-items:center; justify-content:center;
+    font-family:"IBM Plex Mono", monospace; font-size:15px; font-weight:600;
+  }
+  .card .sub{ color:var(--ink-2); font-size:14.5px; margin:0 0 14px; }
+
+  /* ---------- dropzone ---------- */
+  .dropzone{
+    border:2.5px dashed var(--ink-2);
+    border-radius:14px;
+    padding:30px 18px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .15s, background .15s, transform .15s;
+    background:var(--surface-2);
+  }
+  .dropzone:hover, .dropzone:focus-visible{ border-color:var(--blue); outline:none; }
+  .dropzone.dragover{ border-color:var(--blue); background:var(--green-soft); transform:scale(1.01); }
+  .dropzone .big{ font-family:"Bricolage Grotesque", sans-serif; font-weight:800; font-size:20px; margin:8px 0 4px; }
+  .dropzone .small{ color:var(--ink-2); font-size:13.5px; }
+  .dz-icon{ width:52px; height:52px; margin:0 auto; display:block; }
+  .sample-link{
+    display:inline-block; margin-top:14px;
+    background:none; border:none; cursor:pointer;
+    color:var(--blue-dark); font:inherit; font-size:14.5px; font-weight:600;
+    text-decoration:underline; text-underline-offset:3px; padding:4px;
+  }
+  @media (prefers-color-scheme: dark){ .sample-link{ color:#6db3ff; } }
+
+  /* ---------- preview ---------- */
+  .preview-wrap{ display:none; }
+  .preview-wrap.on{ display:block; }
+  .stage{
+    position:relative; border:2px solid var(--line); border-radius:14px; overflow:hidden;
+    background:#000; line-height:0;
+  }
+  .stage video, .stage img{ width:100%; max-height:430px; object-fit:contain; display:block; }
+  .stage.square video, .stage.square img{ aspect-ratio:1/1; object-fit:cover; max-height:none; }
+  .filemeta{
+    display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;
+    font-family:"IBM Plex Mono", monospace; font-size:12.5px;
+  }
+  .chip{
+    border:1.5px solid var(--line); border-radius:999px; padding:3px 11px;
+    background:var(--surface-2); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .chip.blue{ background:var(--blue); color:#fff; border-color:var(--line); }
+
+  /* ---------- controls ---------- */
+  .ctl{ margin-top:20px; }
+  .ctl:first-of-type{ margin-top:6px; }
+  .ctl label, .ctl .lbl{
+    display:block; font-weight:700; font-size:14.5px; margin-bottom:8px;
+  }
+  .ctl .hint{ font-weight:400; color:var(--ink-2); font-size:13px; }
+  input[type="range"]{ width:100%; accent-color:var(--blue); height:32px; }
+  .seg{ display:flex; gap:8px; flex-wrap:wrap; }
+  .seg button{
+    flex:1 1 auto; min-width:74px;
+    font:inherit; font-weight:700; font-size:14.5px;
+    padding:10px 8px; border-radius:12px; cursor:pointer;
+    background:var(--surface-2); color:var(--ink);
+    border:2px solid var(--line);
+    transition:background .12s, color .12s, transform .12s;
+  }
+  .seg button[aria-pressed="true"]{ background:var(--blue); color:#fff; }
+  .seg button:active{ transform:translateY(1px); }
+  .cover-row{ display:flex; gap:14px; align-items:center; }
+  .cover-thumb{
+    width:84px; height:84px; flex:0 0 auto;
+    border:2px solid var(--line); border-radius:12px; overflow:hidden; background:#000;
+  }
+  .cover-thumb canvas{ width:100%; height:100%; object-fit:cover; display:block; }
+  .cover-thumb.empty{ background:var(--surface-2); display:flex; align-items:center; justify-content:center; color:var(--ink-2); font-size:11.5px; text-align:center; padding:6px; }
+  .check{
+    display:flex; gap:10px; align-items:flex-start; cursor:pointer;
+    font-size:14.5px; margin-top:4px;
+  }
+  .check input{ width:20px; height:20px; accent-color:var(--blue); margin-top:1px; flex:0 0 auto; }
+  .check .hint{ display:block; }
+
+  .make-btn{
+    width:100%; margin-top:22px;
+    font-family:"Bricolage Grotesque", sans-serif; font-weight:800; font-size:19px;
+    padding:15px 18px; border-radius:14px; cursor:pointer;
+    background:var(--green); color:#0b2416;
+    border:2px solid var(--line); box-shadow:var(--shadow-sm);
+    transition:transform .12s, box-shadow .12s, opacity .12s;
+  }
+  .make-btn:hover:not(:disabled){ transform:translate(-1px,-1px); box-shadow:4px 4px 0 var(--ink); }
+  .make-btn:disabled{ opacity:.45; cursor:not-allowed; box-shadow:none; }
+  .progress{ display:none; margin-top:16px; }
+  .progress.on{ display:block; }
+  .progress .bar{
+    height:14px; border:2px solid var(--line); border-radius:999px; overflow:hidden; background:var(--surface-2);
+  }
+  .progress .fill{ height:100%; width:0%; background:var(--blue); transition:width .2s; }
+  .progress .msg{ font-size:13.5px; color:var(--ink-2); margin-top:6px; font-family:"IBM Plex Mono", monospace; }
+  .alert{
+    display:none; margin-top:16px; padding:12px 14px; border-radius:12px;
+    border:2px solid var(--line); font-size:14px;
+  }
+  .alert.on{ display:block; }
+  .alert.warn{ background:var(--amber-soft); }
+  .alert.err{ background:var(--red-soft); }
+  .alert.ok{ background:var(--green-soft); }
+
+  /* ---------- output ---------- */
+  .output{ display:none; margin-top:22px; }
+  .output.on{ display:block; }
+  .pair-files{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:480px){ .pair-files{ grid-template-columns:1fr; } }
+  .filecard{
+    border:2px solid var(--line); border-radius:14px; padding:14px;
+    background:var(--surface-2); text-align:center;
+  }
+  .filecard .ext{
+    font-family:"Bricolage Grotesque", sans-serif; font-weight:800; font-size:26px; margin:2px 0 0;
+  }
+  .filecard .fname{ font-family:"IBM Plex Mono", monospace; font-size:11.5px; color:var(--ink-2); word-break:break-all; margin:2px 0 10px; }
+  .dl-btn{
+    display:inline-block; width:100%;
+    font:inherit; font-weight:700; font-size:15px; text-decoration:none;
+    padding:11px 10px; border-radius:11px; cursor:pointer;
+    background:var(--blue); color:#fff; border:2px solid var(--line);
+  }
+  .dl-btn.secondary{ background:var(--surface); color:var(--ink); margin-top:10px; }
+  .pair-id{
+    margin-top:12px; font-family:"IBM Plex Mono", monospace; font-size:12px;
+    color:var(--ink-2); text-align:center; word-break:break-all;
+  }
+  .pair-id b{ color:var(--ink); }
+
+  /* ---------- how-to ---------- */
+  .howto{ margin-top:26px; }
+  .howto ol{ margin:10px 0 0; padding-left:22px; }
+  .howto li{ margin-bottom:12px; font-size:15.5px; }
+  .howto li b{ font-family:"Bricolage Grotesque", sans-serif; }
+  .howto li .d{ color:var(--ink-2); font-size:14.5px; display:block; margin-top:2px; }
+  .notes{ margin-top:22px; display:grid; gap:12px; }
+  @media (min-width:880px){ .notes{ grid-template-columns:1fr 1fr; } }
+  .note{
+    border:2px solid var(--line); border-radius:var(--radius); padding:16px 18px;
+    background:var(--surface); font-size:14.5px;
+  }
+  .note h3{ font-family:"Bricolage Grotesque", sans-serif; margin:0 0 6px; font-size:16.5px; }
+  .note p{ margin:0; color:var(--ink-2); }
+  .note p b{ color:var(--ink); }
+  footer{ margin-top:30px; text-align:center; color:var(--ink-2); font-size:13px; font-family:"IBM Plex Mono", monospace; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="badge">FREE · NO SIGN-UP · RUNS IN YOUR BROWSER</span>
+    <h1>Turn any clip into a <span class="hl">Live Photo</span></h1>
+    <p class="lede">Drop in a video or GIF and get back the two files that make a real Apple Live Photo — a <strong>.JPG</strong> and a <strong>.MOV</strong> carrying the same pairing ID in their metadata. Get both onto your iPhone and Photos merges them into one Live Photo, ready to become an <strong>iMessage sticker</strong>. Nothing is uploaded; the conversion happens on your device.</p>
+  </header>
+
+  <div class="grid">
+    <!-- LEFT: source -->
+    <section class="card" aria-label="Choose a clip">
+      <h2><span class="stepnum">1</span> Drop your clip</h2>
+      <p class="sub">MP4, MOV, WebM, or an animated GIF. Short loops work best — Live Photos are only a few seconds.</p>
+
+      <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Choose a video or GIF file">
+        <svg class="dz-icon" viewBox="0 0 52 52" fill="none" aria-hidden="true">
+          <rect x="4" y="10" width="34" height="32" rx="7" fill="#0a84ff" stroke="#14161a" stroke-width="2.5"/>
+          <path d="M38 20 L48 14 V38 L38 32" fill="#1db954" stroke="#14161a" stroke-width="2.5" stroke-linejoin="round"/>
+          <path d="M17 20 L27 26 L17 32 Z" fill="#fff"/>
+          <circle cx="45" cy="7" r="4" fill="#ffb340" stroke="#14161a" stroke-width="2"/>
+        </svg>
+        <div class="big">Tap to pick a file, or drag it here</div>
+        <div class="small">Video or GIF · stays on your device · no size police, but keep it short</div>
+      </div>
+      <button class="sample-link" id="sampleBtn" type="button">No clip handy? Generate a test sticker instead →</button>
+      <input type="file" id="fileInput" accept="video/*,image/gif,.gif,.mov,.mp4,.webm,.m4v" hidden />
+
+      <div class="preview-wrap" id="previewWrap">
+        <div class="stage" id="stage">
+          <video id="vid" playsinline muted loop preload="auto"></video>
+          <img id="gifImg" alt="Your GIF, playing" style="display:none" />
+        </div>
+        <div class="filemeta" id="fileMeta"></div>
+      </div>
+    </section>
+
+    <!-- RIGHT: controls + output -->
+    <section class="card" aria-label="Live Photo settings">
+      <h2><span class="stepnum">2</span> Pick the moment</h2>
+      <p class="sub">The cover frame is the still photo — and the frame your sticker is cut from. Scrub to the best one.</p>
+
+      <div class="ctl">
+        <label for="scrub">Cover frame <span class="hint" id="scrubHint">— load a clip first</span></label>
+        <input type="range" id="scrub" min="0" max="1000" value="0" disabled />
+        <div class="cover-row">
+          <div class="cover-thumb empty" id="coverThumb">no frame yet</div>
+          <div>
+            <button class="sample-link" id="snapBtn" type="button" style="margin-top:0" disabled>Snap current frame as cover</button>
+            <div class="hint" id="coverHint" style="font-size:13px;color:var(--ink-2)">For videos, the scrubber updates the cover automatically.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ctl">
+        <span class="lbl">Clip length <span class="hint">— starts at your cover frame</span></span>
+        <div class="seg" id="lenSeg" role="group" aria-label="Clip length">
+          <button type="button" data-len="1.5" aria-pressed="false">1.5 sec</button>
+          <button type="button" data-len="3" aria-pressed="true">3 sec</button>
+          <button type="button" data-len="5" aria-pressed="false">5 sec</button>
+        </div>
+      </div>
+
+      <div class="ctl">
+        <span class="lbl">Shape</span>
+        <div class="seg" id="shapeSeg" role="group" aria-label="Shape">
+          <button type="button" data-shape="orig" aria-pressed="true">Original</button>
+          <button type="button" data-shape="square" aria-pressed="false">Square · sticker-ready</button>
+        </div>
+      </div>
+
+      <div class="ctl" id="passthroughCtl" style="display:none">
+        <label class="check">
+          <input type="checkbox" id="keepOriginal" />
+          <span>Keep the original video file <span class="hint">Best quality, no re-encode — but your trim and crop above get skipped, and the clip keeps its full length. Only for MP4 / MOV.</span></span>
+        </label>
+      </div>
+
+      <h2 style="margin-top:26px"><span class="stepnum">3</span> Make it</h2>
+      <button class="make-btn" id="makeBtn" type="button" disabled>Make my Live Photo</button>
+
+      <div class="progress" id="progress">
+        <div class="bar"><div class="fill" id="progressFill"></div></div>
+        <div class="msg" id="progressMsg">Working…</div>
+      </div>
+      <div class="alert" id="alertBox" role="status"></div>
+
+      <div class="output" id="output">
+        <div class="pair-files">
+          <div class="filecard">
+            <div class="ext">.JPG</div>
+            <div class="fname" id="jpgName">—</div>
+            <a class="dl-btn" id="jpgDl" href="#" download>Download photo</a>
+          </div>
+          <div class="filecard">
+            <div class="ext">.MOV</div>
+            <div class="fname" id="movName">—</div>
+            <a class="dl-btn" id="movDl" href="#" download>Download video</a>
+          </div>
+        </div>
+        <button class="dl-btn secondary" id="zipBtn" type="button">Download both as one .zip</button>
+        <div class="pair-id" id="pairId"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- HOW TO -->
+  <section class="card howto" aria-label="How to use the files on iPhone">
+    <h2><span class="stepnum">4</span> On your iPhone: pair them &amp; make the sticker</h2>
+    <ol>
+      <li><b>Get both files onto the phone, together.</b>
+        <span class="d">Easiest: open this page in Safari on the iPhone and download both files right there. On a Mac or PC, AirDrop both files to the iPhone in one go. The two files must keep the same name — they&apos;re a matched pair.</span></li>
+      <li><b>Save both to Photos.</b>
+        <span class="d">In the Files app, select both files, tap Share, then &ldquo;Save to Photos&rdquo; (save both, not just one). iOS spots the shared pairing ID and merges them into a single Live Photo — you&apos;ll only see one item in Photos.</span></li>
+      <li><b>Check it plays.</b>
+        <span class="d">Open it in Photos and long-press — it should animate, with the LIVE badge up top. If the two files landed separately, delete both and re-save them together.</span></li>
+      <li><b>Turn it into an iMessage sticker.</b>
+        <span class="d">In Photos, long-press the subject in the Live Photo and tap &ldquo;Add Sticker&rdquo; — or in Messages, open the + menu → Stickers → + and pick the Live Photo. Live Photo stickers stay animated in the chat.</span></li>
+    </ol>
+  </section>
+
+  <div class="notes">
+    <div class="note">
+      <h3>Why two files?</h3>
+      <p>A Live Photo isn&apos;t one file — it&apos;s a <b>JPEG + a short MOV</b> linked by an identical content ID stamped into both files&apos; metadata. That stamp is the whole trick the paid apps charge for. This page writes it for free, right in your browser.</p>
+    </div>
+    <div class="note">
+      <h3>Good to know</h3>
+      <p>Re-encoded clips are <b>silent</b> (stickers don&apos;t need sound, and it keeps the MOV tiny). For the sharpest result, use the &ldquo;keep original&rdquo; option with MP4/MOV clips. If your browser can only record WebM, you&apos;ll get a warning — switch to Safari or Chrome for a pairable .MOV.</p>
+    </div>
+  </div>
+
+  <footer>made on-device · your clips never leave this page</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ================= state ================= */
+  var state = {
+    kind: null,            // 'video' | 'gif' | 'sample'
+    file: null,
+    fileName: "",
+    blobUrl: null,
+    isPassthroughCapable: false,
+    duration: 0,
+    keyTime: 0,
+    length: 3,
+    shape: "orig",
+    coverBlob: null,       // raw canvas JPEG (no EXIF yet)
+    coverCanvas: null,
+    outJpgUrl: null,
+    outMovUrl: null,
+    outJpgBlob: null,
+    outMovBlob: null,
+    baseName: "",
+    uuid: "",
+    busy: false
+  };
+
+  var $ = function(id){ return document.getElementById(id); };
+  var dropzone = $("dropzone"), fileInput = $("fileInput"),
+      previewWrap = $("previewWrap"), stage = $("stage"),
+      vid = $("vid"), gifImg = $("gifImg"), fileMeta = $("fileMeta"),
+      scrub = $("scrub"), scrubHint = $("scrubHint"),
+      coverThumb = $("coverThumb"), snapBtn = $("snapBtn"),
+      makeBtn = $("makeBtn"), progress = $("progress"),
+      progressFill = $("progressFill"), progressMsg = $("progressMsg"),
+      alertBox = $("alertBox"), output = $("output"),
+      passthroughCtl = $("passthroughCtl"), keepOriginal = $("keepOriginal");
+
+  function showAlert(type, html){
+    alertBox.className = "alert on " + type;
+    alertBox.innerHTML = html;
+  }
+  function clearAlert(){ alertBox.className = "alert"; alertBox.innerHTML = ""; }
+  function setProgress(pct, msg){
+    progress.classList.add("on");
+    progressFill.style.width = Math.round(pct) + "%";
+    if (msg) progressMsg.textContent = msg;
+  }
+  function hideProgress(){ progress.classList.remove("on"); progressFill.style.width = "0%"; }
+  function fmtBytes(n){
+    if (n > 1048576) return (n/1048576).toFixed(1) + " MB";
+    if (n > 1024) return Math.round(n/1024) + " KB";
+    return n + " B";
+  }
+  function fmtTime(s){
+    if (!isFinite(s)) return "—";
+    return s.toFixed(1) + "s";
+  }
+  function makeUuid(){
+    var u = "";
+    if (window.crypto && crypto.randomUUID) u = crypto.randomUUID();
+    else {
+      var b = new Uint8Array(16);
+      crypto.getRandomValues(b);
+      b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+      var h = Array.prototype.map.call(b, function(x){ return ("0"+x.toString(16)).slice(-2); }).join("");
+      u = h.slice(0,8)+"-"+h.slice(8,12)+"-"+h.slice(12,16)+"-"+h.slice(16,20)+"-"+h.slice(20);
+    }
+    return u.toUpperCase();
+  }
+
+  /* ================= file intake ================= */
+  dropzone.addEventListener("click", function(){ fileInput.click(); });
+  dropzone.addEventListener("keydown", function(e){
+    if (e.key === "Enter" || e.key === " "){ e.preventDefault(); fileInput.click(); }
+  });
+  ["dragenter","dragover"].forEach(function(ev){
+    dropzone.addEventListener(ev, function(e){ e.preventDefault(); dropzone.classList.add("dragover"); });
+  });
+  ["dragleave","drop"].forEach(function(ev){
+    dropzone.addEventListener(ev, function(e){ e.preventDefault(); dropzone.classList.remove("dragover"); });
+  });
+  dropzone.addEventListener("drop", function(e){
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) loadFile(f);
+  });
+  fileInput.addEventListener("change", function(){
+    if (fileInput.files && fileInput.files[0]) loadFile(fileInput.files[0]);
+    fileInput.value = "";
+  });
+
+  function resetOutput(){
+    output.classList.remove("on");
+    if (state.outJpgUrl) URL.revokeObjectURL(state.outJpgUrl);
+    if (state.outMovUrl) URL.revokeObjectURL(state.outMovUrl);
+    state.outJpgUrl = state.outMovUrl = null;
+    state.outJpgBlob = state.outMovBlob = null;
+    clearAlert();
+  }
+
+  function loadFile(file){
+    resetOutput();
+    var oldSample = $("sampleStage");
+    if (oldSample) oldSample.remove();
+    sampleCanvasRef = null;
+    if (state.blobUrl) URL.revokeObjectURL(state.blobUrl);
+    state.file = file;
+    state.fileName = file.name || "clip";
+    state.blobUrl = URL.createObjectURL(file);
+    state.coverBlob = null; state.coverCanvas = null;
+    state.keyTime = 0;
+    scrub.value = 0;
+
+    var lower = state.fileName.toLowerCase();
+    var isGif = file.type === "image/gif" || lower.slice(-4) === ".gif";
+    state.isPassthroughCapable = !isGif && (file.type.indexOf("mp4") >= 0 || file.type === "video/quicktime" || /\.(mp4|mov|m4v)$/.test(lower));
+    passthroughCtl.style.display = state.isPassthroughCapable ? "block" : "none";
+    keepOriginal.checked = false;
+
+    previewWrap.classList.add("on");
+    stage.classList.toggle("square", state.shape === "square");
+    coverThumb.className = "cover-thumb empty";
+    coverThumb.textContent = "no frame yet";
+
+    if (isGif){
+      state.kind = "gif";
+      vid.style.display = "none"; vid.removeAttribute("src"); 
+      gifImg.style.display = "block";
+      gifImg.onload = function(){
+        state.duration = 0;
+        scrub.disabled = true;
+        scrubHint.textContent = "— GIFs loop on their own";
+        snapBtn.disabled = false;
+        makeBtn.disabled = false;
+        snapCoverFromGif();
+        renderMeta();
+      };
+      gifImg.src = state.blobUrl;
+    } else {
+      state.kind = "video";
+      gifImg.style.display = "none"; gifImg.removeAttribute("src");
+      vid.style.display = "block";
+      vid.src = state.blobUrl;
+      vid.onloadedmetadata = function(){
+        state.duration = vid.duration || 0;
+        scrub.disabled = false;
+        scrubHint.textContent = "— clip is " + fmtTime(state.duration) + " long";
+        snapBtn.disabled = false;
+        makeBtn.disabled = false;
+        vid.currentTime = 0;
+        renderMeta();
+      };
+      vid.onseeked = function(){
+        if (state.kind === "video") captureCoverFromVideo();
+      };
+      vid.onerror = function(){
+        showAlert("err", "<b>That file wouldn't play in this browser.</b> Try an MP4, MOV, WebM, or GIF.");
+        makeBtn.disabled = true;
+      };
+      var p = vid.play();
+      if (p && p.catch) p.catch(function(){});
+    }
+    renderMeta();
+  }
+
+  function renderMeta(){
+    if (!state.file) { fileMeta.innerHTML = ""; return; }
+    var bits = [];
+    bits.push('<span class="chip">' + escapeHtml(state.fileName) + '</span>');
+    bits.push('<span class="chip">' + fmtBytes(state.file.size) + '</span>');
+    if (state.kind === "video" && state.duration) bits.push('<span class="chip">' + fmtTime(state.duration) + '</span>');
+    if (state.kind === "gif") bits.push('<span class="chip blue">GIF</span>');
+    fileMeta.innerHTML = bits.join("");
+  }
+  function escapeHtml(s){
+    return s.replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  /* ================= cover frame ================= */
+  function drawSourceToCanvas(canvas, square){
+    var w, h, sw, sh, el;
+    if (state.kind === "gif"){ el = gifImg; sw = gifImg.naturalWidth; sh = gifImg.naturalHeight; }
+    else { el = vid; sw = vid.videoWidth; sh = vid.videoHeight; }
+    if (!sw || !sh) return false;
+    if (square){
+      var side = Math.min(sw, sh);
+      var cap = 1024;
+      var out = Math.min(side, cap);
+      canvas.width = out; canvas.height = out;
+      var ctx = canvas.getContext("2d");
+      ctx.drawImage(el, (sw-side)/2, (sh-side)/2, side, side, 0, 0, out, out);
+    } else {
+      var maxW = 2048, scale = Math.min(1, maxW / sw);
+      canvas.width = Math.round(sw * scale); canvas.height = Math.round(sh * scale);
+      canvas.getContext("2d").drawImage(el, 0, 0, canvas.width, canvas.height);
+    }
+    return true;
+  }
+
+  function setCover(canvas){
+    state.coverCanvas = canvas;
+    canvas.toBlob(function(b){
+      state.coverBlob = b;
+      coverThumb.className = "cover-thumb";
+      coverThumb.innerHTML = "";
+      var c2 = document.createElement("canvas");
+      c2.width = canvas.width; c2.height = canvas.height;
+      c2.getContext("2d").drawImage(canvas, 0, 0);
+      coverThumb.appendChild(c2);
+    }, "image/jpeg", 0.92);
+  }
+  function captureCoverFromVideo(){
+    var c = document.createElement("canvas");
+    if (drawSourceToCanvas(c, state.shape === "square")) setCover(c);
+  }
+  function snapCoverFromGif(){
+    var c = document.createElement("canvas");
+    if (drawSourceToCanvas(c, state.shape === "square")) setCover(c);
+  }
+
+  var scrubbing = false;
+  scrub.addEventListener("input", function(){
+    if (state.kind !== "video" || !state.duration) return;
+    scrubbing = true;
+    state.keyTime = (scrub.value / 1000) * state.duration;
+    vid.pause();
+    vid.currentTime = state.keyTime;
+  });
+  scrub.addEventListener("change", function(){ scrubbing = false; });
+  snapBtn.addEventListener("click", function(){
+    if (state.kind === "gif") snapCoverFromGif();
+    else if (state.kind === "video") captureCoverFromVideo();
+    else if (state.kind === "sample") sampleSnapCover();
+  });
+
+  /* ================= segmented controls ================= */
+  function segWire(id, fn){
+    var seg = $(id);
+    seg.addEventListener("click", function(e){
+      var btn = e.target.closest("button");
+      if (!btn) return;
+      var all = seg.querySelectorAll("button");
+      for (var i = 0; i < all.length; i++) all[i].setAttribute("aria-pressed", "false");
+      btn.setAttribute("aria-pressed", "true");
+      fn(btn);
+    });
+  }
+  segWire("lenSeg", function(btn){ state.length = parseFloat(btn.getAttribute("data-len")); });
+  segWire("shapeSeg", function(btn){
+    state.shape = btn.getAttribute("data-shape");
+    stage.classList.toggle("square", state.shape === "square");
+    if (state.kind === "video") captureCoverFromVideo();
+    else if (state.kind === "gif") snapCoverFromGif();
+  });
+
+  /* ================= JPEG EXIF: Live Photo pairing stamp =================
+     Writes into the JPEG:
+       - EXIF ImageUniqueID = UUID
+       - Apple MakerNote (tag 0x0011) ContentIdentifier = UUID
+       - an XMP copy of the identifier as a third hedge
+     iOS Photos pairs the still with the MOV whose QuickTime
+     content.identifier matches. */
+  function buildMakerNote(uuid){
+    // "Apple iOS\0" + version, then a big-endian TIFF sub-IFD holding
+    // a single entry: tag 0x0011, ASCII, the UUID.
+    var head = [0x41,0x70,0x70,0x6C,0x65,0x20,0x69,0x4F,0x53,0x00, 0x00,0x01];
+    var uuidBytes = [];
+    for (var i = 0; i < uuid.length; i++) uuidBytes.push(uuid.charCodeAt(i));
+    var tiff = [];
+    // "MM", 42, IFD offset 8
+    tiff.push(0x4D,0x4D, 0x00,0x2A, 0x00,0x00,0x00,0x08);
+    // entry count 1
+    tiff.push(0x00,0x01);
+    // tag 0x0011, type 2 (ASCII), count, offset (8 + 2 + 12 + 4 = 26)
+    tiff.push(0x00,0x11, 0x00,0x02,
+              (uuidBytes.length>>>24)&255,(uuidBytes.length>>>16)&255,(uuidBytes.length>>>8)&255,uuidBytes.length&255,
+              0x00,0x00,0x00,26);
+    // next IFD = 0
+    tiff.push(0x00,0x00,0x00,0x00);
+    return new Uint8Array(head.concat(tiff).concat(uuidBytes));
+  }
+
+  function buildExifApp1(uuid){
+    var mn = buildMakerNote(uuid);
+    var makeStr = [0x41,0x70,0x70,0x6C,0x65,0x00]; // "Apple\0"
+    var uidStr = [];
+    for (var i = 0; i < uuid.length; i++) uidStr.push(uuid.charCodeAt(i));
+    uidStr.push(0);
+
+    // Layout (little-endian TIFF):
+    //  0  header (8)
+    //  8  IFD0: 2 entries -> ends 38
+    // 38  Make data (6) -> ends 44
+    // 44  ExifIFD: 2 entries -> ends 74
+    // 74  ImageUniqueID data (37)
+    // 111 MakerNote data
+    var OFF_IFD0 = 8, OFF_MAKE = 38, OFF_EXIF = 44, OFF_UID = 74, OFF_MN = 111;
+    var total = OFF_MN + mn.length;
+    var buf = new Uint8Array(6 + total); // "Exif\0\0" + TIFF
+    var dv = new DataView(buf.buffer);
+    buf.set([0x45,0x78,0x69,0x66,0x00,0x00], 0);
+    var T = 6; // TIFF start inside buf
+    buf[T] = 0x49; buf[T+1] = 0x49;             // "II"
+    dv.setUint16(T+2, 42, true);
+    dv.setUint32(T+4, OFF_IFD0, true);
+    function entry(off, tag, type, count, val){
+      dv.setUint16(T+off, tag, true);
+      dv.setUint16(T+off+2, type, true);
+      dv.setUint32(T+off+4, count, true);
+      dv.setUint32(T+off+8, val, true);
+    }
+    // IFD0
+    dv.setUint16(T+OFF_IFD0, 2, true);
+    entry(OFF_IFD0+2,  0x010F, 2, makeStr.length, OFF_MAKE); // Make
+    entry(OFF_IFD0+14, 0x8769, 4, 1, OFF_EXIF);               // ExifIFD pointer
+    dv.setUint32(T+OFF_IFD0+26, 0, true);
+    buf.set(makeStr, T+OFF_MAKE);
+    // ExifIFD (tags ascending: 0x927C then 0xA420)
+    dv.setUint16(T+OFF_EXIF, 2, true);
+    entry(OFF_EXIF+2,  0x927C, 7, mn.length, OFF_MN);         // MakerNote
+    entry(OFF_EXIF+14, 0xA420, 2, uidStr.length, OFF_UID);    // ImageUniqueID
+    dv.setUint32(T+OFF_EXIF+26, 0, true);
+    buf.set(uidStr, T+OFF_UID);
+    buf.set(mn, T+OFF_MN);
+
+    // Wrap as APP1 segment
+    var segLen = 2 + buf.length;
+    var seg = new Uint8Array(2 + segLen);
+    seg[0] = 0xFF; seg[1] = 0xE1;
+    seg[2] = (segLen >>> 8) & 255; seg[3] = segLen & 255;
+    seg.set(buf, 4);
+    return seg;
+  }
+
+  function buildXmpApp1(uuid){
+    var header = "http://ns.adobe.com/xap/1.0/\0";
+    var xml = '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">' +
+      '<rdf:Description rdf:about="" xmlns:apple="http://ns.apple.com/iphone/1.0/" apple:ContentIdentifier="' + uuid + '"/>' +
+      '</rdf:RDF></x:xmpmeta>';
+    var data = [];
+    var i;
+    for (i = 0; i < header.length; i++) data.push(header.charCodeAt(i));
+    for (i = 0; i < xml.length; i++) data.push(xml.charCodeAt(i) & 0xFF);
+    var segLen = 2 + data.length;
+    var seg = new Uint8Array(2 + segLen);
+    seg[0] = 0xFF; seg[1] = 0xE1;
+    seg[2] = (segLen >>> 8) & 255; seg[3] = segLen & 255;
+    seg.set(data, 4);
+    return seg;
+  }
+
+  function stampJpeg(jpegBuffer, uuid){
+    var src = new Uint8Array(jpegBuffer);
+    if (src[0] !== 0xFF || src[1] !== 0xD8) throw new Error("Cover frame is not a JPEG.");
+    var exif = buildExifApp1(uuid);
+    var xmp = buildXmpApp1(uuid);
+    var out = new Uint8Array(2 + exif.length + xmp.length + (src.length - 2));
+    out.set(src.subarray(0, 2), 0);
+    out.set(exif, 2);
+    out.set(xmp, 2 + exif.length);
+    out.set(src.subarray(2), 2 + exif.length + xmp.length);
+    return new Blob([out], { type: "image/jpeg" });
+  }
+
+  /* ================= MOV/MP4: QuickTime pairing stamp =================
+     Inserts a udta > meta box into moov with keys:
+       com.apple.quicktime.content.identifier   = UUID (UTF-8)
+       com.apple.quicktime.still-image-time     = key-frame time (int, timescale units)
+       com.apple.quicktime.live-photo-format-version = "1.0"
+     and repairs stco/co64 chunk offsets shifted by the insertion. */
+  function u32be(b, o){ return ((b[o]<<24)>>>0) + (b[o+1]<<16) + (b[o+2]<<8) + b[o+3]; }
+  function w32be(b, o, v){ b[o]=(v>>>24)&255; b[o+1]=(v>>>16)&255; b[o+2]=(v>>>8)&255; b[o+3]=v&255; }
+  function boxType(b, o){ return String.fromCharCode(b[o+4], b[o+5], b[o+6], b[o+7]); }
+  function boxSize(b, o){
+    var s = u32be(b, o);
+    if (s === 1) { // 64-bit size (rare in our inputs) — treat high word as 0 for our scale
+      return u32be(b, o+12);
+    }
+    return s;
+  }
+  function scanBoxes(b, start, end){
+    var list = [], o = start;
+    while (o + 8 <= end){
+      var s = boxSize(b, o);
+      if (s < 8 || o + s > end) break;
+      list.push({ off: o, size: s, type: boxType(b, o) });
+      o += s;
+    }
+    return list;
+  }
+  function strBytes(s){ var a = []; for (var i = 0; i < s.length; i++) a.push(s.charCodeAt(i) & 0xFF); return a; }
+  function makeBox(type, payload){
+    var out = new Uint8Array(8 + payload.length);
+    w32be(out, 0, out.length);
+    out.set(strBytes(type), 4);
+    out.set(payload, 8);
+    return out;
+  }
+  function buildMetaBox(uuid, stillTicks){
+    // hdlr
+    var hdlrPayload = new Uint8Array(4 + 4 + 4 + 12 + 1);
+    hdlrPayload.set(strBytes("mdir"), 8);
+    var hdlr = makeBox("hdlr", hdlrPayload);
+    // keys
+    var keyNames = [
+      "com.apple.quicktime.content.identifier",
+      "com.apple.quicktime.still-image-time",
+      "com.apple.quicktime.live-photo-format-version"
+    ];
+    var keysPayload = [0,0,0,0, 0,0,0,keyNames.length];
+    keyNames.forEach(function(k){
+      var kb = strBytes(k);
+      var entry = new Uint8Array(8 + kb.length);
+      w32be(entry, 0, entry.length);
+      entry.set(strBytes("mdta"), 4);
+      entry.set(kb, 8);
+      entry.forEach(function(x){ keysPayload.push(x); });
+    });
+    var keys = makeBox("keys", new Uint8Array(keysPayload));
+    // ilst
+    function dataBox(typeVal, valueBytes){
+      var p = new Uint8Array(8 + valueBytes.length);
+      w32be(p, 0, typeVal); w32be(p, 4, 0);
+      p.set(valueBytes, 8);
+      return makeBox("data", p);
+    }
+    function ilstItem(index, data){
+      var out = new Uint8Array(8 + data.length);
+      w32be(out, 0, out.length);
+      w32be(out, 4, index); // box "type" field carries the 1-based key index
+      out.set(data, 8);
+      return out;
+    }
+    var uuidData = dataBox(1, new Uint8Array(strBytes(uuid)));
+    var ticksBytes = new Uint8Array(4); w32be(ticksBytes, 0, stillTicks >>> 0);
+    if (stillTicks < 0) w32be(ticksBytes, 0, 0xFFFFFFFF + stillTicks + 1);
+    var timeData = dataBox(21, ticksBytes);
+    var verData = dataBox(1, new Uint8Array(strBytes("1.0")));
+    var ilstPayload = [];
+    [ilstItem(1, uuidData), ilstItem(2, timeData), ilstItem(3, verData)].forEach(function(it){
+      it.forEach(function(x){ ilstPayload.push(x); });
+    });
+    var ilst = makeBox("ilst", new Uint8Array(ilstPayload));
+    // meta = fullbox header + hdlr + keys + ilst
+    var metaPayload = new Uint8Array(4 + hdlr.length + keys.length + ilst.length);
+    metaPayload.set(hdlr, 4);
+    metaPayload.set(keys, 4 + hdlr.length);
+    metaPayload.set(ilst, 4 + hdlr.length + keys.length);
+    return makeBox("meta", metaPayload);
+  }
+
+  function findTimescale(bytes, moov){
+    var kids = scanBoxes(bytes, moov.off + 8, moov.off + moov.size);
+    for (var i = 0; i < kids.length; i++){
+      if (kids[i].type === "mvhd"){
+        var o = kids[i].off + 8;
+        var ver = bytes[o];
+        if (ver === 1) return u32be(bytes, o + 28);
+        return u32be(bytes, o + 16);
+      }
+    }
+    return 1000;
+  }
+
+  function fixChunkOffsets(buf, insertPos, delta){
+    var CONTAINERS = { moov:1, trak:1, mdia:1, minf:1, stbl:1, edts:1, dinf:1 };
+    function walk(start, end){
+      var boxes = scanBoxes(buf, start, end);
+      boxes.forEach(function(bx){
+        if (bx.type === "stco"){
+          var cnt = u32be(buf, bx.off + 12);
+          for (var i = 0; i < cnt; i++){
+            var p = bx.off + 16 + i * 4, v = u32be(buf, p);
+            if (v >= insertPos) w32be(buf, p, v + delta);
+          }
+        } else if (bx.type === "co64"){
+          var cnt2 = u32be(buf, bx.off + 12);
+          for (var j = 0; j < cnt2; j++){
+            var q = bx.off + 16 + j * 8;
+            var hi = u32be(buf, q), lo = u32be(buf, q + 4);
+            if (hi > 0 || lo >= insertPos){
+              var nv = hi * 4294967296 + lo + delta;
+              w32be(buf, q, Math.floor(nv / 4294967296));
+              w32be(buf, q + 4, nv % 4294967296);
+            }
+          }
+        } else if (CONTAINERS[bx.type]){
+          walk(bx.off + 8, bx.off + bx.size);
+        } else if (bx.type === "meta"){
+          walk(bx.off + 12, bx.off + bx.size);
+        }
+      });
+    }
+    var top = scanBoxes(buf, 0, buf.length);
+    top.forEach(function(bx){ if (CONTAINERS[bx.type]) walk(bx.off + 8, bx.off + bx.size); });
+  }
+
+  function stampMov(arrayBuffer, uuid, stillSeconds){
+    var src = new Uint8Array(arrayBuffer);
+    var top = scanBoxes(src, 0, src.length);
+    var moov = null;
+    top.forEach(function(bx){ if (bx.type === "moov") moov = bx; });
+    if (!moov) throw new Error("No moov box found — this file's structure can't take the Live Photo stamp.");
+    var timescale = findTimescale(src, moov);
+    var stillTicks = Math.max(0, Math.round(stillSeconds * timescale));
+    var meta = buildMetaBox(uuid, stillTicks);
+
+    var kids = scanBoxes(src, moov.off + 8, moov.off + moov.size);
+    var udta = null;
+    kids.forEach(function(bx){ if (bx.type === "udta") udta = bx; });
+
+    var insertBytes, insertPos, growBoxes;
+    if (udta){
+      insertBytes = meta;
+      insertPos = udta.off + udta.size; // end of udta content
+      growBoxes = [moov, udta];
+    } else {
+      insertBytes = makeBox("udta", meta);
+      insertPos = moov.off + moov.size;
+      growBoxes = [moov];
+    }
+    var delta = insertBytes.length;
+    var out = new Uint8Array(src.length + delta);
+    out.set(src.subarray(0, insertPos), 0);
+    out.set(insertBytes, insertPos);
+    out.set(src.subarray(insertPos), insertPos + delta);
+    growBoxes.forEach(function(bx){ w32be(out, bx.off, bx.size + delta); });
+    fixChunkOffsets(out, insertPos, delta);
+    return new Blob([out], { type: "video/quicktime" });
+  }
+
+  /* ================= recording (re-encode path) ================= */
+  function pickMime(){
+    if (typeof MediaRecorder === "undefined") return "";
+    var candidates = [
+      'video/mp4;codecs="avc1.640028,mp4a.40.2"',
+      'video/mp4;codecs=avc1',
+      "video/mp4",
+      "video/webm;codecs=vp9",
+      "video/webm;codecs=vp8",
+      "video/webm"
+    ];
+    for (var i = 0; i < candidates.length; i++){
+      try { if (MediaRecorder.isTypeSupported(candidates[i])) return candidates[i]; } catch(e){}
+    }
+    return "";
+  }
+
+  function sourceDims(){
+    if (state.kind === "gif") return { w: gifImg.naturalWidth, h: gifImg.naturalHeight };
+    if (state.kind === "sample") return { w: 720, h: 720 };
+    return { w: vid.videoWidth, h: vid.videoHeight };
+  }
+
+  // drawFrame(ctx, w, h, elapsedSec) is supplied per source kind.
+  function recordClip(drawFrame, durationSec, onProgress){
+    return new Promise(function(resolve, reject){
+      var dims = sourceDims();
+      if (!dims.w || !dims.h){ reject(new Error("Couldn't read the clip's dimensions.")); return; }
+      var canvas = document.createElement("canvas");
+      var scale = Math.min(1, 1280 / Math.max(dims.w, dims.h));
+      if (state.shape === "square"){
+        var side = Math.min(dims.w, dims.h);
+        canvas.width = Math.round(side * Math.min(1, 1024 / side));
+        canvas.height = canvas.width;
+      } else {
+        canvas.width = Math.round(dims.w * scale);
+        canvas.height = Math.round(dims.h * scale);
+      }
+      var ctx = canvas.getContext("2d");
+      var mime = pickMime();
+      if (!mime){ reject(new Error("This browser can't record video (no MediaRecorder MP4/WebM support). Try Safari or Chrome.")); return; }
+      var stream = canvas.captureStream(30);
+      var rec;
+      try { rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8000000 }); }
+      catch(e){ reject(new Error("Couldn't start the recorder: " + e.message)); return; }
+      var chunks = [];
+      rec.ondataavailable = function(e){ if (e.data && e.data.size) chunks.push(e.data); };
+      rec.onerror = function(e){ reject(new Error("Recording failed.")); };
+      var t0 = performance.now();
+      var raf = null, stopped = false;
+      function loop(){
+        var el = (performance.now() - t0) / 1000;
+        if (el >= durationSec){
+          if (!stopped){ stopped = true; try { rec.stop(); } catch(e){} }
+          return;
+        }
+        drawFrame(ctx, canvas.width, canvas.height, el);
+        if (onProgress) onProgress(el / durationSec);
+        raf = requestAnimationFrame(loop);
+      }
+      rec.onstop = function(){
+        if (raf) cancelAnimationFrame(raf);
+        resolve(new Blob(chunks, { type: mime.split(";")[0] }));
+      };
+      drawFrame(ctx, canvas.width, canvas.height, 0);
+      rec.start(200);
+      raf = requestAnimationFrame(loop);
+    });
+  }
+
+  function drawVideoFrame(ctx, w, h){
+    if (state.shape === "square"){
+      var side = Math.min(vid.videoWidth, vid.videoHeight);
+      ctx.drawImage(vid, (vid.videoWidth-side)/2, (vid.videoHeight-side)/2, side, side, 0, 0, w, h);
+    } else {
+      ctx.drawImage(vid, 0, 0, w, h);
+    }
+  }
+  function drawGifFrame(ctx, w, h){
+    if (state.shape === "square"){
+      var side = Math.min(gifImg.naturalWidth, gifImg.naturalHeight);
+      ctx.drawImage(gifImg, (gifImg.naturalWidth-side)/2, (gifImg.naturalHeight-side)/2, side, side, 0, 0, w, h);
+    } else {
+      ctx.drawImage(gifImg, 0, 0, w, h);
+    }
+  }
+  function drawSampleFrame(ctx, w, h, t){
+    // Animated test card: bouncing star on iMessage blue.
+    ctx.fillStyle = "#0a84ff";
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(255,255,255,.16)";
+    for (var i = 0; i < 5; i++){
+      ctx.beginPath();
+      ctx.arc((i * 173 + t * 30) % (w + 80) - 40, (i * 131) % h, 26, 0, 7);
+      ctx.fill();
+    }
+    var cx = w/2, cy = h/2 + Math.sin(t * 3.2) * h * 0.09;
+    var R = w * 0.21, r = R * 0.48, rot = t * 0.9;
+    ctx.beginPath();
+    for (var k = 0; k < 10; k++){
+      var ang = rot + k * Math.PI / 5 - Math.PI/2;
+      var rad = (k % 2 === 0) ? R : r;
+      var x = cx + Math.cos(ang) * rad, y = cy + Math.sin(ang) * rad;
+      if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = "#ffb340";
+    ctx.strokeStyle = "#14161a"; ctx.lineWidth = Math.max(4, w * 0.012);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#fff";
+    ctx.font = "800 " + Math.round(w * 0.075) + "px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("test sticker", cx, h * 0.86);
+  }
+  function sampleSnapCover(){
+    if (!sampleCanvasRef) return;
+    var c = document.createElement("canvas");
+    c.width = sampleCanvasRef.width; c.height = sampleCanvasRef.height;
+    c.getContext("2d").drawImage(sampleCanvasRef, 0, 0);
+    setCover(c);
+  }
+  var sampleCanvasRef = null;
+
+  /* ================= sample mode ================= */
+  $("sampleBtn").addEventListener("click", function(){
+    resetOutput();
+    state.kind = "sample";
+    state.file = null; state.fileName = "Test sticker (generated)";
+    state.isPassthroughCapable = false;
+    passthroughCtl.style.display = "none";
+    previewWrap.classList.add("on");
+    vid.style.display = "none"; gifImg.style.display = "none";
+    var old = $("sampleStage");
+    if (old) old.remove();
+    var c = document.createElement("canvas");
+    c.id = "sampleStage"; c.width = 720; c.height = 720;
+    c.style.width = "100%"; c.style.display = "block";
+    stage.appendChild(c);
+    sampleCanvasRef = c;
+    stage.classList.toggle("square", state.shape === "square");
+    fileMeta.innerHTML = '<span class="chip">Generated test clip</span><span class="chip blue">SAMPLE</span>';
+    scrub.disabled = true;
+    scrubHint.textContent = "— sample clip";
+    snapBtn.disabled = false;
+    makeBtn.disabled = false;
+    var start = performance.now();
+    (function anim(){
+      if (state.kind !== "sample" || !sampleCanvasRef) return;
+      drawSampleFrame(c.getContext("2d"), c.width, c.height, (performance.now() - start) / 1000);
+      requestAnimationFrame(anim);
+    })();
+    setTimeout(sampleSnapCover, 120);
+    showAlert("ok", "<b>Sample loaded.</b> Hit &ldquo;Make my Live Photo&rdquo; and you'll get a real pair to test the iPhone steps with.");
+  });
+
+  /* ================= make it ================= */
+  makeBtn.addEventListener("click", function(){
+    if (state.busy) return;
+    if (!state.kind){ showAlert("err", "<b>Load a clip first</b> — or generate the test sticker."); return; }
+    state.busy = true;
+    makeBtn.disabled = true;
+    resetOutput();
+    setProgress(2, "Preparing…");
+
+    var uuid = makeUuid();
+    state.uuid = uuid;
+    var base = "live-sticker-" + uuid.slice(0, 4).toLowerCase();
+    state.baseName = base;
+
+    function fail(err){
+      state.busy = false;
+      makeBtn.disabled = false;
+      hideProgress();
+      showAlert("err", "<b>That didn't work:</b> " + escapeHtml(err.message || String(err)));
+    }
+
+    function finish(jpgBlob, movBlob, movExt, warnHtml, stillSecondsNote){
+      // Stamp the JPEG (cover may need producing for sample/video paths)
+      state.busy = false;
+      makeBtn.disabled = false;
+      hideProgress();
+      state.outJpgBlob = jpgBlob;
+      state.outMovBlob = movBlob;
+      state.outJpgUrl = URL.createObjectURL(jpgBlob);
+      state.outMovUrl = URL.createObjectURL(movBlob);
+      $("jpgName").textContent = base + ".JPG";
+      $("movName").textContent = base + "." + movExt;
+      var j = $("jpgDl"); j.href = state.outJpgUrl; j.setAttribute("download", base + ".JPG");
+      var m = $("movDl"); m.href = state.outMovUrl; m.setAttribute("download", base + "." + movExt);
+      $("pairId").innerHTML = "Pairing ID in both files: <b>" + uuid + "</b>" + (stillSecondsNote ? "<br>" + stillSecondsNote : "");
+      output.classList.add("on");
+      if (warnHtml) showAlert("warn", warnHtml);
+      else showAlert("ok", "<b>Done — that's a real Live Photo pair.</b> Download both files (keep the names matched), get them onto your iPhone together, and follow step 4 below.");
+      output.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    function stampCoverAndFinish(rawMovBlobOrBuffer, stillSeconds, isRawBuffer){
+      var doStamp = function(jpegBuf){
+        try {
+          var jpg = stampJpeg(jpegBuf, uuid);
+          if (isRawBuffer){
+            var mv = stampMov(rawMovBlobOrBuffer, uuid, stillSeconds);
+            finish(jpg, mv, "MOV", null, "Video: original file, stamped in place · " + fmtBytes(mv.size));
+          } else {
+            rawMovBlobOrBuffer.arrayBuffer().then(function(ab){
+              var isMp4 = rawMovBlobOrBuffer.type.indexOf("mp4") >= 0;
+              if (!isMp4){
+                finish(jpg, rawMovBlobOrBuffer, "WEBM",
+                  "<b>Heads up:</b> this browser could only record WebM, and iOS Photos can't pair a WebM as a Live Photo. The JPG is fine — re-make the pair in <b>Safari or Chrome</b> to get a pairable .MOV.",
+                  "Cover frame stamped · video is WebM (not pairable)");
+                return;
+              }
+              var mv2 = stampMov(ab, uuid, stillSeconds);
+              finish(jpg, mv2, "MOV", null, "Video: re-encoded .MOV · " + fmtBytes(mv2.size) + " · silent");
+            }).catch(function(e){ fail(e); });
+          }
+        } catch(e){ fail(e); }
+      };
+      if (state.coverBlob){
+        state.coverBlob.arrayBuffer().then(doStamp).catch(fail);
+      } else if (state.coverCanvas){
+        state.coverCanvas.toBlob(function(b){
+          if (!b){ fail(new Error("Couldn't produce the cover photo.")); return; }
+          b.arrayBuffer().then(doStamp).catch(fail);
+        }, "image/jpeg", 0.92);
+      } else {
+        fail(new Error("No cover frame yet — scrub to a frame first."));
+      }
+    }
+
+    try {
+      var usePassthrough = state.kind === "video" && state.isPassthroughCapable && keepOriginal.checked;
+      if (usePassthrough){
+        setProgress(45, "Stamping your original file with the pairing ID…");
+        if (state.kind === "video") captureCoverFromVideo();
+        state.file.arrayBuffer().then(function(ab){
+          stampCoverAndFinish(ab, state.keyTime, true);
+        }).catch(fail);
+        return;
+      }
+
+      // Re-encode path
+      setProgress(8, "Recording your clip… (plays in real time)");
+      if (state.kind === "video"){
+        captureCoverFromVideo();
+        vid.loop = true;
+        vid.currentTime = state.keyTime;
+        var started = false;
+        var begin = function(){
+          if (started) return; started = true;
+          var p = vid.play(); if (p && p.catch) p.catch(function(){});
+          recordClip(drawVideoFrame, state.length, function(f){
+            setProgress(8 + f * 78, "Recording your clip… " + Math.round(f * 100) + "%");
+          }).then(function(blob){
+            setProgress(92, "Stamping the pair…");
+            stampCoverAndFinish(blob, 0, false);
+          }).catch(fail);
+        };
+        if (vid.readyState >= 3) begin();
+        else vid.addEventListener("canplay", begin, { once: true });
+        setTimeout(function(){ if (!started) begin(); }, 1200);
+      } else if (state.kind === "gif"){
+        snapCoverFromGif();
+        recordClip(drawGifFrame, state.length, function(f){
+          setProgress(8 + f * 78, "Recording your GIF… " + Math.round(f * 100) + "%");
+        }).then(function(blob){
+          setProgress(92, "Stamping the pair…");
+          stampCoverAndFinish(blob, 0, false);
+        }).catch(fail);
+      } else if (state.kind === "sample"){
+        sampleSnapCover();
+        recordClip(function(ctx, w, h, t){ drawSampleFrame(ctx, w, h, t); }, state.length, function(f){
+          setProgress(8 + f * 78, "Recording the test clip… " + Math.round(f * 100) + "%");
+        }).then(function(blob){
+          setProgress(92, "Stamping the pair…");
+          stampCoverAndFinish(blob, 0, false);
+        }).catch(fail);
+      }
+    } catch(e){ fail(e); }
+  });
+
+  /* ================= zip ================= */
+  $("zipBtn").addEventListener("click", function(){
+    if (!state.outJpgBlob || !state.outMovBlob) return;
+    if (typeof JSZip === "undefined"){
+      showAlert("warn", "The zip helper didn't load — no problem, just download the two files above individually.");
+      return;
+    }
+    var zip = new JSZip();
+    var movExt = $("movName").textContent.split(".").pop();
+    zip.file(state.baseName + ".JPG", state.outJpgBlob);
+    zip.file(state.baseName + "." + movExt, state.outMovBlob);
+    zip.generateAsync({ type: "blob" }).then(function(z){
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(z);
+      a.download = state.baseName + ".zip";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 800);
+    }).catch(function(){
+      showAlert("warn", "Zip failed — download the two files above individually instead.");
+    });
+  });
+
+})();
+</script>
+</body>
+</html>
