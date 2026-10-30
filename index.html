@@ -7,7 +7,6 @@
 <link rel="icon" href="data:," />
 <title>Live Photo Maker</title>
 <script src="vendor/jszip.min.js"></script>
-<script src="vendor/ffmpeg.js"></script>
 <style>
   :root{
     color-scheme: light;
@@ -1048,41 +1047,34 @@
   });
 
   /* ================= ffmpeg.wasm engine (genuine QuickTime MOV) =================
-     Everything is vendored same-origin under vendor/ (no CDN scripts):
-     the @ffmpeg/util UMD build throws "exports is not defined" in browsers,
-     so its two helpers are implemented inline here. */
+     Everything is vendored same-origin under vendor/ (no CDN scripts).
+     History: the @ffmpeg/util UMD build throws "exports is not defined" in
+     browsers, and the @ffmpeg/ffmpeg UMD build's classic worker crashes the
+     core with "memory access out of bounds". The ESM build, loaded with
+     import() and plain same-origin core URLs, is the working path.
+     fetchFile is implemented inline (it was the only util helper we used). */
   var ffmpegInst = null;
   var ffmpegReady = false;
-  function toBlobURLLocal(url, mime){
-    return fetch(url).then(function(r){
-      if (!r.ok) throw new Error("encoder download failed (" + r.status + ")");
-      return r.arrayBuffer();
-    }).then(function(ab){
-      return URL.createObjectURL(new Blob([ab], { type: mime }));
-    });
-  }
   function fetchFileLocal(blob){
     return blob.arrayBuffer().then(function(ab){ return new Uint8Array(ab); });
   }
   function loadFFmpegEngine(onMsg){
     if (ffmpegReady && ffmpegInst) return Promise.resolve(ffmpegInst);
-    if (!window.FFmpegWASM) return Promise.reject(new Error("The video encoder failed to load. Check your connection and reload the page."));
-    var FFmpegCtor = window.FFmpegWASM.FFmpeg;
     if (onMsg) onMsg("Downloading the video encoder (one time, ~30 MB)…");
+    var moduleURL = new URL("vendor/ffmpeg-esm/index.js", window.location.href).href;
+    var coreURL = new URL("vendor/core/ffmpeg-core.js", window.location.href).href;
+    var wasmURL = new URL("vendor/core/ffmpeg-core.wasm", window.location.href).href;
     function attempt(){
-      var ff = new FFmpegCtor();
-      ffmpegInst = ff;
-      ff.on("progress", function(e){
-        // progress events fire per exec; the make flow maps them into its own bar
-        if (typeof ff._onprog === "function") { try { ff._onprog(e); } catch(_){} }
+      return import(moduleURL).then(function(mod){
+        var ff = new mod.FFmpeg();
+        ffmpegInst = ff;
+        ff.on("progress", function(e){
+          // progress events fire per exec; the make flow maps them into its own bar
+          if (typeof ff._onprog === "function") { try { ff._onprog(e); } catch(_){} }
+        });
+        ff.on("log", function(){});
+        return ff.load({ coreURL: coreURL, wasmURL: wasmURL }).then(function(){ return ff; });
       });
-      ff.on("log", function(){});
-      return Promise.all([
-        toBlobURLLocal("vendor/ffmpeg-core.js", "text/javascript"),
-        toBlobURLLocal("vendor/ffmpeg-core.wasm", "application/wasm")
-      ]).then(function(urls){
-        return ff.load({ coreURL: urls[0], wasmURL: urls[1] });
-      }).then(function(){ return ff; });
     }
     return attempt().catch(function(){
       // one retry with a fresh instance; a half-loaded instance cannot reload
@@ -1090,6 +1082,8 @@
     }).then(function(ff){
       ffmpegReady = true;
       return ff;
+    }, function(){
+      throw new Error("The video encoder failed to load. Check your connection and reload the page.");
     });
   }
   function extForFile(file, kind){
