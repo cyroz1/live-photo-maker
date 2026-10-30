@@ -3,264 +3,233 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="color-scheme" content="light dark" />
+<meta name="color-scheme" content="light" />
 <link rel="icon" href="data:," />
 <title>Live Photo Maker</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
   :root{
-    --bg:#f4f4f0;
+    color-scheme: light;
+    --bg:#ffffff;
     --surface:#ffffff;
-    --surface-2:#eceff3;
-    --ink:#14161a;
-    --ink-2:#4b5563;
-    --line:#14161a;
-    --blue:#0a84ff;
-    --blue-dark:#0060df;
-    --green:#1db954;
-    --green-soft:#dcf5e5;
-    --amber:#ffb340;
-    --amber-soft:#fff0d2;
-    --red:#e5484d;
-    --red-soft:#fde3e3;
-    --shadow:6px 6px 0 var(--ink);
-    --shadow-sm:3px 3px 0 var(--ink);
-    --radius:18px;
-  }
-  @media (prefers-color-scheme: dark){
-    :root{
-      --bg:#101216;
-      --surface:#1a1d23;
-      --surface-2:#23262e;
-      --ink:#f2f3f5;
-      --ink-2:#a7aebc;
-      --line:#f2f3f5;
-      --green-soft:#123524;
-      --amber-soft:#3d2f0e;
-      --red-soft:#3d1618;
-      --shadow:6px 6px 0 rgba(0,0,0,.55);
-      --shadow-sm:3px 3px 0 rgba(0,0,0,.55);
-    }
+    --surface-2:#f5f5f7;
+    --ink:#1d1d1f;
+    --ink-2:#6e6e73;
+    --line:#d2d2d7;
+    --blue:#0066cc;
+    --blue-btn:#0071e3;
+    --red:#b42318;
   }
   *{ box-sizing:border-box; }
   html{ -webkit-text-size-adjust:100%; }
   body{
     margin:0;
     background:var(--bg);
-    background-image:radial-gradient(var(--ink-2) .8px, transparent .8px);
-    background-size:26px 26px;
-    background-position:0 0;
     color:var(--ink);
-    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    line-height:1.45;
+    font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size:17px;
+    line-height:1.47;
+    letter-spacing:-0.01em;
+    -webkit-font-smoothing:antialiased;
   }
-  .wrap{ max-width:1060px; margin:0 auto; padding:28px 18px 64px; }
+  a{ color:var(--blue); }
+  .wrap{ max-width:680px; margin:0 auto; padding:48px 20px 56px; }
 
   /* ---------- header ---------- */
-  header{ margin:6px 0 26px; }
+  header{ margin:0 0 8px; padding-bottom:28px; border-bottom:1px solid var(--line); }
   .badge{
-    display:inline-block;
-    background:var(--amber);
-    color:#14161a;
-    border:2px solid var(--line);
-    border-radius:999px;
-    padding:4px 14px;
-    font-family:"IBM Plex Mono", monospace;
-    font-size:12.5px; font-weight:600;
-    letter-spacing:.04em;
-    transform:rotate(-1.5deg);
-    box-shadow:var(--shadow-sm);
+    display:block;
+    color:var(--ink-2);
+    font-size:12px; font-weight:400;
+    letter-spacing:0;
+    text-transform:none;
+    margin:0 0 12px;
   }
   h1{
-    font-family:"Bricolage Grotesque", -apple-system, sans-serif;
-    font-weight:800;
-    font-size:clamp(38px, 7.5vw, 64px);
-    line-height:.98;
-    letter-spacing:-.01em;
-    margin:16px 0 12px;
-    max-width:12ch;
+    font-family:inherit;
+    font-weight:600;
+    font-size:36px;
+    line-height:1.1;
+    letter-spacing:-0.02em;
+    margin:0 0 12px;
   }
-  h1 .hl{ background:var(--blue); color:#fff; padding:0 .14em; border-radius:.18em; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
-  .lede{ font-size:clamp(16px, 2.6vw, 19px); color:var(--ink-2); max-width:56ch; margin:0; }
-  .lede strong{ color:var(--ink); }
+  @media (max-width:600px){ h1{ font-size:30px; } }
+  h1 .hl{ background:none; color:inherit; padding:0; }
+  .lede{ font-size:17px; color:var(--ink-2); margin:0; line-height:1.5; }
+  .lede strong{ color:var(--ink); font-weight:600; }
 
   /* ---------- layout ---------- */
-  .grid{ display:grid; grid-template-columns:1fr; gap:22px; }
-  @media (min-width:880px){ .grid{ grid-template-columns:1.15fr .85fr; align-items:start; } }
+  .grid{ display:block; }
   .card{
     background:var(--surface);
-    border:2px solid var(--line);
-    border-radius:var(--radius);
-    box-shadow:var(--shadow);
-    padding:20px;
+    border:none;
+    border-bottom:1px solid var(--line);
+    border-radius:0;
+    box-shadow:none;
+    padding:28px 0;
   }
   .card h2{
-    font-family:"Bricolage Grotesque", sans-serif;
-    font-size:21px; font-weight:800; margin:0 0 4px;
+    font-family:inherit;
+    font-size:21px; font-weight:600; letter-spacing:-0.01em; margin:0 0 6px;
     display:flex; align-items:center; gap:10px;
   }
   .stepnum{
-    flex:0 0 auto; width:30px; height:30px; border-radius:50%;
-    background:var(--ink); color:var(--bg);
+    flex:0 0 auto; width:24px; height:24px; border-radius:50%;
+    background:transparent; color:var(--ink-2);
+    border:1px solid var(--line);
     display:inline-flex; align-items:center; justify-content:center;
-    font-family:"IBM Plex Mono", monospace; font-size:15px; font-weight:600;
+    font-size:13px; font-weight:500;
   }
-  .card .sub{ color:var(--ink-2); font-size:14.5px; margin:0 0 14px; }
+  .card .sub{ color:var(--ink-2); font-size:15px; margin:0 0 16px; line-height:1.5; }
 
   /* ---------- dropzone ---------- */
   .dropzone{
-    border:2.5px dashed var(--ink-2);
-    border-radius:14px;
-    padding:30px 18px;
+    border:1px dashed #86868b;
+    border-radius:12px;
+    padding:32px 18px;
     text-align:center;
     cursor:pointer;
-    transition:border-color .15s, background .15s, transform .15s;
-    background:var(--surface-2);
+    background:#fbfbfd;
   }
   .dropzone:hover, .dropzone:focus-visible{ border-color:var(--blue); outline:none; }
-  .dropzone.dragover{ border-color:var(--blue); background:var(--green-soft); transform:scale(1.01); }
-  .dropzone .big{ font-family:"Bricolage Grotesque", sans-serif; font-weight:800; font-size:20px; margin:8px 0 4px; }
-  .dropzone .small{ color:var(--ink-2); font-size:13.5px; }
-  .dz-icon{ width:52px; height:52px; margin:0 auto; display:block; }
+  .dropzone.dragover{ border-color:var(--blue); background:var(--surface-2); }
+  .dropzone .big{ font-weight:600; font-size:17px; margin:10px 0 4px; }
+  .dropzone .small{ color:var(--ink-2); font-size:13px; }
+  .dz-icon{ width:36px; height:36px; margin:0 auto; display:block; }
   .sample-link{
     display:inline-block; margin-top:14px;
     background:none; border:none; cursor:pointer;
-    color:var(--blue-dark); font:inherit; font-size:14.5px; font-weight:600;
-    text-decoration:underline; text-underline-offset:3px; padding:4px;
+    color:var(--blue); font:inherit; font-size:15px; font-weight:400;
+    text-decoration:none; padding:4px 0;
   }
-  @media (prefers-color-scheme: dark){ .sample-link{ color:#6db3ff; } }
+  .sample-link:hover{ text-decoration:underline; text-underline-offset:3px; }
+  .sample-link:disabled{ color:var(--ink-2); cursor:default; text-decoration:none; }
 
   /* ---------- preview ---------- */
-  .preview-wrap{ display:none; }
+  .preview-wrap{ display:none; margin-top:20px; }
   .preview-wrap.on{ display:block; }
   .stage{
-    position:relative; border:2px solid var(--line); border-radius:14px; overflow:hidden;
+    position:relative; border:1px solid var(--line); border-radius:8px; overflow:hidden;
     background:#000; line-height:0;
   }
   .stage video, .stage img{ width:100%; max-height:430px; object-fit:contain; display:block; }
   .stage.square video, .stage.square img{ aspect-ratio:1/1; object-fit:cover; max-height:none; }
   .filemeta{
-    display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;
-    font-family:"IBM Plex Mono", monospace; font-size:12.5px;
+    display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:10px;
+    font-size:12px; color:var(--ink-2);
   }
   .chip{
-    border:1.5px solid var(--line); border-radius:999px; padding:3px 11px;
-    background:var(--surface-2); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    padding:0; background:none; border:none; border-radius:0;
+    max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
-  .chip.blue{ background:var(--blue); color:#fff; border-color:var(--line); }
+  .chip.blue{ background:none; color:var(--ink-2); }
 
   /* ---------- controls ---------- */
-  .ctl{ margin-top:20px; }
-  .ctl:first-of-type{ margin-top:6px; }
+  .ctl{ margin-top:24px; }
+  .ctl:first-of-type{ margin-top:8px; }
   .ctl label, .ctl .lbl{
-    display:block; font-weight:700; font-size:14.5px; margin-bottom:8px;
+    display:block; font-weight:600; font-size:15px; margin-bottom:8px;
   }
   .ctl .hint{ font-weight:400; color:var(--ink-2); font-size:13px; }
-  input[type="range"]{ width:100%; accent-color:var(--blue); height:32px; }
+  input[type="range"]{ width:100%; accent-color:var(--blue-btn); height:32px; }
   .seg{ display:flex; gap:8px; flex-wrap:wrap; }
   .seg button{
     flex:1 1 auto; min-width:74px;
-    font:inherit; font-weight:700; font-size:14.5px;
-    padding:10px 8px; border-radius:12px; cursor:pointer;
+    font:inherit; font-weight:400; font-size:14px;
+    padding:8px 12px; border-radius:8px; cursor:pointer;
     background:var(--surface-2); color:var(--ink);
-    border:2px solid var(--line);
-    transition:background .12s, color .12s, transform .12s;
+    border:1px solid var(--line);
   }
-  .seg button[aria-pressed="true"]{ background:var(--blue); color:#fff; }
-  .seg button:active{ transform:translateY(1px); }
+  .seg button[aria-pressed="true"]{ background:var(--ink); color:#fff; border-color:var(--ink); }
   .cover-row{ display:flex; gap:14px; align-items:center; }
   .cover-thumb{
     width:84px; height:84px; flex:0 0 auto;
-    border:2px solid var(--line); border-radius:12px; overflow:hidden; background:#000;
+    border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#000;
   }
   .cover-thumb canvas{ width:100%; height:100%; object-fit:cover; display:block; }
-  .cover-thumb.empty{ background:var(--surface-2); display:flex; align-items:center; justify-content:center; color:var(--ink-2); font-size:11.5px; text-align:center; padding:6px; }
+  .cover-thumb.empty{ background:var(--surface-2); display:flex; align-items:center; justify-content:center; color:var(--ink-2); font-size:11px; text-align:center; padding:6px; }
   .check{
     display:flex; gap:10px; align-items:flex-start; cursor:pointer;
-    font-size:14.5px; margin-top:4px;
+    font-size:15px; margin-top:4px; line-height:1.45;
   }
-  .check input{ width:20px; height:20px; accent-color:var(--blue); margin-top:1px; flex:0 0 auto; }
+  .check input{ width:18px; height:18px; accent-color:var(--blue-btn); margin-top:2px; flex:0 0 auto; }
   .check .hint{ display:block; }
 
   .make-btn{
-    width:100%; margin-top:22px;
-    font-family:"Bricolage Grotesque", sans-serif; font-weight:800; font-size:19px;
-    padding:15px 18px; border-radius:14px; cursor:pointer;
-    background:var(--green); color:#0b2416;
-    border:2px solid var(--line); box-shadow:var(--shadow-sm);
-    transition:transform .12s, box-shadow .12s, opacity .12s;
+    width:100%; margin-top:20px;
+    font-family:inherit; font-weight:400; font-size:17px;
+    padding:12px 22px; border-radius:980px; cursor:pointer;
+    background:var(--blue-btn); color:#fff;
+    border:1px solid transparent; box-shadow:none;
   }
-  .make-btn:hover:not(:disabled){ transform:translate(-1px,-1px); box-shadow:4px 4px 0 var(--ink); }
-  .make-btn:disabled{ opacity:.45; cursor:not-allowed; box-shadow:none; }
+  .make-btn:hover:not(:disabled){ background:#0077ed; }
+  .make-btn:disabled{ opacity:.4; cursor:not-allowed; }
   .progress{ display:none; margin-top:16px; }
   .progress.on{ display:block; }
   .progress .bar{
-    height:14px; border:2px solid var(--line); border-radius:999px; overflow:hidden; background:var(--surface-2);
+    height:4px; border:none; border-radius:999px; overflow:hidden; background:#e8e8ed;
   }
-  .progress .fill{ height:100%; width:0%; background:var(--blue); transition:width .2s; }
-  .progress .msg{ font-size:13.5px; color:var(--ink-2); margin-top:6px; font-family:"IBM Plex Mono", monospace; }
+  .progress .fill{ height:100%; width:0%; background:var(--blue-btn); transition:width .2s; }
+  .progress .msg{ font-size:13px; color:var(--ink-2); margin-top:8px; }
   .alert{
-    display:none; margin-top:16px; padding:12px 14px; border-radius:12px;
-    border:2px solid var(--line); font-size:14px;
+    display:none; margin-top:16px; padding:12px 14px; border-radius:8px;
+    border:1px solid var(--line); background:var(--surface-2); font-size:14px; line-height:1.5;
   }
   .alert.on{ display:block; }
-  .alert.warn{ background:var(--amber-soft); }
-  .alert.err{ background:var(--red-soft); }
-  .alert.ok{ background:var(--green-soft); }
+  .alert.warn{ background:var(--surface-2); }
+  .alert.err{ background:var(--surface-2); color:var(--red); }
+  .alert.err b{ color:var(--red); }
+  .alert.ok{ background:var(--surface-2); }
 
   /* ---------- output ---------- */
-  .output{ display:none; margin-top:22px; }
+  .output{ display:none; margin-top:24px; }
   .output.on{ display:block; }
   .pair-files{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   @media (max-width:480px){ .pair-files{ grid-template-columns:1fr; } }
   .filecard{
-    border:2px solid var(--line); border-radius:14px; padding:14px;
-    background:var(--surface-2); text-align:center;
+    border:1px solid var(--line); border-radius:8px; padding:16px;
+    background:var(--surface); text-align:center;
   }
   .filecard .ext{
-    font-family:"Bricolage Grotesque", sans-serif; font-weight:800; font-size:26px; margin:2px 0 0;
+    font-weight:600; font-size:20px; margin:2px 0 0;
   }
-  .filecard .fname{ font-family:"IBM Plex Mono", monospace; font-size:11.5px; color:var(--ink-2); word-break:break-all; margin:2px 0 10px; }
+  .filecard .fname{ font-size:12px; color:var(--ink-2); word-break:break-all; margin:4px 0 12px; }
   .dl-btn{
     display:inline-block; width:100%;
-    font:inherit; font-weight:700; font-size:15px; text-decoration:none;
-    padding:11px 10px; border-radius:11px; cursor:pointer;
-    background:var(--blue); color:#fff; border:2px solid var(--line);
+    font:inherit; font-weight:400; font-size:15px; text-decoration:none; text-align:center;
+    padding:10px 16px; border-radius:980px; cursor:pointer;
+    background:var(--blue-btn); color:#fff; border:1px solid transparent;
   }
-  .dl-btn.secondary{ background:var(--surface); color:var(--ink); margin-top:10px; }
+  .dl-btn.secondary{ background:var(--surface); color:var(--blue); border-color:var(--line); margin-top:10px; }
   .pair-id{
-    margin-top:12px; font-family:"IBM Plex Mono", monospace; font-size:12px;
-    color:var(--ink-2); text-align:center; word-break:break-all;
+    margin-top:12px; font-size:12px;
+    color:var(--ink-2); text-align:center; word-break:break-all; line-height:1.5;
   }
-  .pair-id b{ color:var(--ink); }
+  .pair-id b{ color:var(--ink); font-weight:600; }
 
   /* ---------- how-to ---------- */
-  .howto{ margin-top:26px; }
-  .howto ol{ margin:10px 0 0; padding-left:22px; }
-  .howto li{ margin-bottom:12px; font-size:15.5px; }
-  .howto li b{ font-family:"Bricolage Grotesque", sans-serif; }
-  .howto li .d{ color:var(--ink-2); font-size:14.5px; display:block; margin-top:2px; }
-  .notes{ margin-top:22px; display:grid; gap:12px; }
-  @media (min-width:880px){ .notes{ grid-template-columns:1fr 1fr; } }
+  .howto{ margin-top:0; }
+  .howto ol{ margin:12px 0 0; padding-left:22px; }
+  .howto li{ margin-bottom:14px; font-size:15px; line-height:1.5; }
+  .howto li b{ font-weight:600; }
+  .howto li .d{ color:var(--ink-2); font-size:14px; display:block; margin-top:2px; }
+  .notes{ margin-top:0; display:block; }
   .note{
-    border:2px solid var(--line); border-radius:var(--radius); padding:16px 18px;
-    background:var(--surface); font-size:14.5px;
+    border:none; border-bottom:1px solid var(--line); border-radius:0; padding:24px 0;
+    background:var(--surface); font-size:15px; line-height:1.5;
   }
-  .note h3{ font-family:"Bricolage Grotesque", sans-serif; margin:0 0 6px; font-size:16.5px; }
+  .note h3{ font-family:inherit; font-weight:600; margin:0 0 6px; font-size:17px; }
   .note p{ margin:0; color:var(--ink-2); }
-  .note p b{ color:var(--ink); }
-  footer{ margin-top:30px; text-align:center; color:var(--ink-2); font-size:13px; font-family:"IBM Plex Mono", monospace; }
+  .note p b{ color:var(--ink); font-weight:600; }
+  footer{ margin-top:28px; text-align:center; color:var(--ink-2); font-size:12px; }
 </style>
 </head>
 <body>
 <div class="wrap">
 
   <header>
-    <span class="badge">FREE · NO SIGN-UP · RUNS IN YOUR BROWSER</span>
-    <h1>Turn any clip into a <span class="hl">Live Photo</span></h1>
+    <span class="badge">Free &middot; No sign-up &middot; Runs in your browser</span>
+    <h1>Turn any clip into a Live Photo</h1>
     <p class="lede">Drop in a video or GIF and get back the two files that make a real Apple Live Photo — a <strong>.JPG</strong> and a <strong>.MOV</strong> carrying the same pairing ID in their metadata. Get both onto your iPhone and Photos merges them into one Live Photo, ready to become an <strong>iMessage sticker</strong>. Nothing is uploaded; the conversion happens on your device.</p>
   </header>
 
@@ -271,11 +240,10 @@
       <p class="sub">MP4, MOV, WebM, or an animated GIF. Short loops work best — Live Photos are only a few seconds.</p>
 
       <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Choose a video or GIF file">
-        <svg class="dz-icon" viewBox="0 0 52 52" fill="none" aria-hidden="true">
-          <rect x="4" y="10" width="34" height="32" rx="7" fill="#0a84ff" stroke="#14161a" stroke-width="2.5"/>
-          <path d="M38 20 L48 14 V38 L38 32" fill="#1db954" stroke="#14161a" stroke-width="2.5" stroke-linejoin="round"/>
-          <path d="M17 20 L27 26 L17 32 Z" fill="#fff"/>
-          <circle cx="45" cy="7" r="4" fill="#ffb340" stroke="#14161a" stroke-width="2"/>
+        <svg class="dz-icon" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+          <rect x="3" y="6" width="24" height="24" rx="4" stroke="#6e6e73" stroke-width="1.5"/>
+          <path d="M27 14 L33 10.5 V25.5 L27 22" stroke="#6e6e73" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M13 14.5 L20 18 L13 21.5 Z" fill="#6e6e73"/>
         </svg>
         <div class="big">Tap to pick a file, or drag it here</div>
         <div class="small">Video or GIF · stays on your device · no size police, but keep it short</div>
